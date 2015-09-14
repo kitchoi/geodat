@@ -13,7 +13,7 @@ import warnings
 import numpy
 import scipy.io.netcdf as netcdf
 
-import plot.mapplot
+
 from functools import wraps
 import pylab
 
@@ -30,6 +30,7 @@ import geodat.arrays
 import geodat.stat
 import geodat.math
 import geodat.monthly
+import geodat.plot.mapplot
 
 
 def getvar(filename, varname, *args, **kwargs):
@@ -2105,10 +2106,10 @@ def UseMapplot(f_map, f_pylab):
         return f_pylab(x, y, data, *args, **kwargs)
     return plot_func
 
-contour = UseMapplot(plot.mapplot.contour, pylab.contour)
-contourf = UseMapplot(plot.mapplot.contourf, pylab.contourf)
-quiver = UseMapplot(plot.mapplot.quiver, pylab.quiver)
-pcolor = UseMapplot(plot.mapplot.pcolor, pylab.pcolor)
+contour = UseMapplot(geodat.plot.mapplot.contour, pylab.contour)
+contourf = UseMapplot(geodat.plot.mapplot.contourf, pylab.contourf)
+quiver = UseMapplot(geodat.plot.mapplot.quiver, pylab.quiver)
+pcolor = UseMapplot(geodat.plot.mapplot.pcolor, pylab.pcolor)
 
 
 def spatial_corr(var1, var2):
