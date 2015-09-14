@@ -1,5 +1,5 @@
 import numpy
-import keepdims
+import geodat.keepdims as keepdims
 import scipy.stats
 
 def regress(y, x, axis=0, reverse=False, return_corr=False):

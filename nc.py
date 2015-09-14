@@ -24,8 +24,8 @@ from dateutil.relativedelta import relativedelta
 
 import logging
 
-import keepdims
 
+import geodat.keepdims as keepdims
 import geodat.arrays
 import geodat.stat
 import geodat.math

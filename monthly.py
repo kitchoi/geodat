@@ -1,7 +1,7 @@
 import numpy
 import matplotlib.dates
 
-import keepdims
+import geodat.keepdims as keepdims
 
 def get_sliceobj(data, months, month, axis):
     ''' Get the slice that would extract the data in a particular month
