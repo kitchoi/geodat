@@ -7,6 +7,6 @@ setup(name='Geodat',
       description='Geophysical Data Analysis Tool (GeoDAT)',
       author='Kit Yan Choi',
       author_email='kit@kychoi.org',
-      url='http://geophysical-data-analysis-tool-geodat.readthedocs.org/',
+      url='http://kychoi.org/geodat_doc/',
       packages=["geodat","geodat.plot"],
      )
