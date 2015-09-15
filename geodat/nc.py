@@ -483,8 +483,8 @@ class Variable(object):
         >>> var = Variable(netcdf.netcdf_file,"temperature",
                            lat=(-5.,5.),lon=(-170.,-120))
 
-        >>> #Copy varname, dims, attributes from var
-        >>>
+        >>> # Copy varname, dims, attributes from var
+        >>> # If the dimension shape does not match data shape, raise an Error
         >>> var2 = Variable(data=numpy.array([1,2,3,4]),parent=var)
 
         >>> var = Variable(data=numpy.array([1,2,3,4]),
@@ -1414,10 +1414,23 @@ def anomaly(var, appendname=False, clim=None,
 
 def running_climatology(var, appendname, runave_window, step, need_anom=True):
     ''' Calculate the running climatology, with anomaly
-    For example, if the time axis is monthly, to compute a running climatology
-    with a 30-year window, with appended name and anomaly returned,
-    the command is:
-    running_climatology(var,True,30,12,True)
+
+    Args:
+      var (geodat.nc.Variable)
+      appendname (bool): whether to append "_c" to the varname of the output
+      runave_window (int): size of the running average window
+      step (int): step for slicing the array
+      need_anom (bool): whether anomaly is returned
+
+    Returns:
+      climatology (geodat.nc.Variable), anomaly (None or geodat.nc.Variable if
+      need_anom is True)
+
+    Example:
+      If the time axis is monthly, compute a running climatology
+      with a 30-year window, with appended name and anomaly returned, like this::
+
+      >>> running_climatology(var,True,30,12,True)
     '''
     climo = var.runave(runave_window, var.getCAxes().index('T'), step)
     climo.addHistory("Moving climatology with window:{}".format(runave_window))
@@ -2006,33 +2019,35 @@ def savefile(filename, listofvar, overwrite=False,
 
 
 def TimeSlices(var, lower, upper, toggle, no_continuous_duplicate_month=False):
-    ''' Return a time segment of the variable according to the lower (inclusive)
+    """ Return a time segment of the variable according to the lower (inclusive)
     and upper limits (inclusive)
 
     Args:
-    var (geodat.nc.Variable)
-    lower (numeric) : lower time limit
-    upper (numeric) : upper time limit
-    toggle (int) : Y/m/d/H/M/S to select a particular time format
-
-    Optional arg:
-    no_continuous_duplicate_month (bool, default False) : make sure the
-    difference between calendar months in the time axis is always larger than or
-    equal to 1; only suitable for dealing with monthly data
-
-    E.g. 01-01-0001 and 31-01-0001 are about a month apart, the second time step
-    31-01-0001 should be considered as the beginning of February and not as
-    January
-
+      var (geodat.nc.Variable)
+      lower (numeric): lower time limit
+      upper (numeric): upper time limit
+      toggle (str): Y/m/d/H/M/S to select a particular time format
+      no_continuous_duplicate_month (bool): default False; make sure the
+        difference between calendar months in the time axis is always larger
+        than or equal to 1; only suitable for dealing with monthly data.
+    
     Returns:
-    geodat.nc.Variable
+      geodat.nc.Variable
 
-    Example:
-    TimeSlices(var,11.,2.,"m") returns time segments in November, December,
-    January and February
-    TimeSlices(var,1990,2000,"Y") returns time segments from year 1990 to year
-    2000 (inclusive)
-    '''
+    Examples:
+        >>> # time segments in Nov, Dec, Jan and Feb
+        >>> TimeSlices(var,11.,2.,"m") 
+
+        >>> # time segments from year 1990 to 2000 (inclusive)
+        >>> TimeSlices(var,1990,2000,"Y") 
+
+        >>> '''Say 01-01-0001 and 31-01-0001 are two adjacent time
+        >>> steps as far as monthly data is concerned, the second
+        >>> time step 31-01-0001 should be considered as the
+        >>> beginning of February and not as January.  So we
+        >>> want no_continuous_duplicate_month=True '''
+        >>> TimeSlices(var,1,2,"m",True) 
+    """
     time = var.getDate(toggle, no_continuous_duplicate_month)
     taxis = var.getCAxes().index('T')
     if upper < lower:
