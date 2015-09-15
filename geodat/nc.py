@@ -9,21 +9,16 @@ import os
 import sys
 import copy
 import warnings
+import logging
+from functools import wraps
+import datetime
 
 import numpy
 import scipy.io.netcdf as netcdf
-
-
-from functools import wraps
 import pylab
-
 from netCDF4 import num2date as _num2date
 from netCDF4 import date2num as _date2num
-import datetime
 from dateutil.relativedelta import relativedelta
-
-import logging
-
 
 import geodat.keepdims as keepdims
 import geodat.arrays
@@ -79,7 +74,7 @@ def dataset(filenames, result=None, *args, **kwargs):
                 append_code = sys.stdin.readline()
                 if append_code[0] == 'o':
                     result[varname] = Variable(file_handle, varname,
-                                                   *args, **kwargs)
+                                               *args, **kwargs)
                 elif append_code[0] == 'r':
                     print "Enter new name:"
                     newname = sys.stdin.readline()[:-1]
@@ -181,31 +176,23 @@ class Dimension(object):
     It can be indexed/sliced the same way as indexing a numpy array
 
     Attributes:
-        data (numpy 1-d array)
-        dimname (str)
-        units (str)
-        attributes (dict)
+        data (numpy 1-d array): Array for the physical axis
+        dimname (str): Name of the dimension, e.g. "time"
+        units (str): Unit of the dimension, e.g. "days since 1990-01-01"
+        attributes (dict): Attributes for the dimension
 
+    Arguments:
+        data (numpy 1-d array): Array for the physical axis
+        dimname (str): Name of the dimension, e.g. "time"
+        units (str): Unit of the dimension, e.g. "days since 1990-01-01"
+        attributes (dict): Attributes for the dimension
+        parent (Dimension): from which dimname,units,attributes are copied. If
+          parent is provided and dimname/units is specified, the latter is used.
+          If parent is provided and attributes is specified, the attributes
+          from the parent is copied and then updated by the attributes argument.
     """
     def __init__(self, data, dimname=None, units=None,
                  attributes=None, parent=None):
-        '''
-        Arg:
-            data (numpy 1-d array)
-
-        Optional Args:
-            dimname (str)
-            units (str)
-            attributes (dict)
-            parent (Dimension): a Dimension instance from which
-                                dimname,units,attributes are copied
-
-        If parent is provided and dimname/units is specified,
-        the latter is used.
-        If parent is provided and attributes is specified, the attributes from
-        the parent is copied and then updated by the attributes argument.
-
-        '''
         self.data = data
         self.units = units
         self.attributes = {}
@@ -263,7 +250,7 @@ class Dimension(object):
         if the dimension has a cartesian_axis attribute, the value of
         the attribute is returned.  Otherwise, the unit is used as a clue
 
-        Exmaple:
+        Example:
             dim.setattr("cartesian_axis","X")
             dim.getCAxis() --> "X"
 
@@ -462,46 +449,53 @@ class Variable(object):
     It can be indexed/sliced the same way as indexing a numpy array
 
     Attributes:
-        data (numpy 1-d array)
-        varname (str)
-        dims (list of Dimension instances)
-        units (str)
-        attributes (dict)
+        data (numpy.ndarray or numpy.ma.core.MaskedArray): Data array of the
+          variable
+        varname (str): Name of the variable
+        dims (list of Dimension instances): Dimensions of the variable
+          consistent with the shape of the data array
+        units (str): Unit of the variable
+        attributes (dict): Attributes of the variable
+
+    Arguments:
+        reader  (netcdf.netcdf_file, optional): if given, the variable is read
+          from the NetCDF file
+        varname (str) : variable name
+        data    (numpy.ndarray or numpy.ma.core.MaskedArray)
+        dims    (a list of Dimension) : dimensions
+        attributes (dict): attributes of the variables
+        history (str): to be stored/appended to attributes['history']
+        parent (Variable): from which varname, dims and attributes are copied;
+          Copied `varname` and `dims` can be overwritten by assigning values in
+          the arguments.  If `attributes` is copied from `parent`, the
+          dictionary assigned to the argument `attributes` is used to update the
+          copied `attributes`.  `parent` is left unchanged.
+        lat (tuple): length=2, specify a meridional domain, e.g. lat=(-5,5)
+        lon (tuple): length=2, specify a zonal domain, e.g. lon=(-170,-120.),
+               modulo=360. is forcefully applied
+        time (tuple): extract a temporal domain
+        ensureMasked (bool): whether the array is masked using _FillValue
+               upon initialization. default: False
+
+    Examples:
+        >>> var = Variable(netcdf.netcdf_file,"temperature")
+
+        >>> var = Variable(netcdf.netcdf_file,"temperature",
+                           lat=(-5.,5.),lon=(-170.,-120))
+
+        >>> #Copy varname, dims, attributes from var
+        >>>
+        >>> var2 = Variable(data=numpy.array([1,2,3,4]),parent=var)
+
+        >>> var = Variable(data=numpy.array([1,2,3,4]),
+                           dims=[Dimension(data=numpy.array([0.,1.,2.,3.]),)],
+                           varname='name')
 
     """
 
     def __init__(self, reader=None, varname=None, data=None, dims=None,
                  attributes=None, history=None, parent=None,
                  ensureMasked=False, **kwargs):
-        """
-        Optional arguments:
-        reader  (netcdf.netcdf_file)
-        varname (str) : variable name
-        data    (numpy.ndarray or numpy.ma.core.MaskedArray)
-        dims    (a list of Dimension) : dimensions
-        attributes (dict) : attributes of the variables
-        history (str) : to be stored/appended to attributes['history']
-        parent (Variable) :from which varname,dims and attributes are copied
-        lat (tuple) : length=2, extract a meridional domain, e.g. lat=(-5,5)
-        lon (tuple) : length=2, extract a zonal domain, e.g. lon=(-170,-120.),
-                      modulo=360. is forcefully applied
-        time (tuple) : extract a temporal domain
-        ensureMasked (bool) : whether the array is masked using _FillValue
-                              upon initialization. default: False
-
-        Examples:
-        (1) var = Variable(netcdf.netcdf_file,"temperature")
-
-        (2) var = Variable(netcdf.netcdf_file,"temperature",
-                           lat=(-5.,5.),lon=(-170.,-120))
-
-        (3) var2 = Variable(data=numpy.array([1,2,3,4]),parent=var)
-
-        (4) var = Variable(data=numpy.array([1,2,3,4]),
-                           dims=[Dimension(data=numpy.array([0.,1.,2.,3.]),)],
-                           varname='name')
-
-        """
         # Initialize the most basic properties.
         # Anything else goes to the attribute dictionary
         self.data = data
@@ -563,19 +557,21 @@ class Variable(object):
         if ensureMasked:
             self.ensureMasked()
 
-        if not self.shape_matches_dims():
-            raise ValueError("Dimension mismatch")
+        # Check to make sure the variable data shape matches the dimensions'
+        self.check_shape_matches_dims()
 
 
-    def shape_matches_dims(self):
+    def check_shape_matches_dims(self):
         ''' Check if the shape of the data matches the dimensions
 
-        Returns:
-            bool
+        Raise ValueError if the dimensions do not match
         '''
         var_data_shape = self.data.shape
         dim_shape = tuple([dim.data.size for dim in self.dims])
-        return var_data_shape == dim_shape
+        if var_data_shape != dim_shape:
+            raise ValueError("Dimension mismatch.\n"+
+                             "data shape:{}, dimensions shape:{}".format(
+                                 var_data_shape,dim_shape))
 
 
     def addHistory(self, string):
@@ -802,7 +798,7 @@ class Variable(object):
     def getRegion(self, **kwargs):
         ''' Return a new Variable object within the region specified.
         '''
-        a = Variable(data=self.data, varname=self.varname, parent=self)
+        a = Variable(data=self.data, parent=self)
         a.setRegion(**kwargs)
         return a
 
@@ -1008,8 +1004,7 @@ class Variable(object):
         if N % 2 != 1:
             N = N + 1
         return Variable(data=geodat.stat.runave(self.data, N, axis, step),
-                        parent=self,
-                        history=history)
+                        parent=self, history=history)
 
     def squeeze(self):
         ''' Remove singlet dimensions
@@ -1448,11 +1443,11 @@ def clim2long(clim, target):
                for idim, dim in enumerate(clim.dims)]
     return geodat.nc.Variable(data=geodat.monthly.clim2long(
         clim.data, 0, target.getDate("m", True)),
-                            dims=new_dim,
-                            attributes=clim.attributes,
-                            history="geodat.nc.clim2long({},{})".\
-                            format(clim.varname, target.varname),
-                            varname=clim.varname)
+                              dims=new_dim,
+                              attributes=clim.attributes,
+                              history="geodat.nc.clim2long({},{})".\
+                              format(clim.varname, target.varname),
+                              varname=clim.varname)
 
 
 def concatenate(variables, axis=0):
