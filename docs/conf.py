@@ -42,7 +42,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Geophysical Data Analysis Tool'
-copyright = u'2015, <a href="http://kychoi.org">Kit Yan Choi</a>'
+copyright = u'2015, <a href="/">Kit Yan Choi</a>'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
