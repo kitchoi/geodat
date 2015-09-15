@@ -9,31 +9,26 @@ def Num2Fer(data, coords, dimunits,
             cartesian_axes=None, dimnames=None):
     ''' Create a dictionary that resemble the Ferret
     data variable structure to be passed to pyferret.putdata
-    Necessary Input:
-    data           - numpy.ndarray
-    coords         - a list of numpy.ndarray
-    dimunits       - a list of strings for the dimension units
-                     (e.g. ['months','degrees_N','degrees_E'])
 
-    Optional input:
-    varname        - string
-    data_units     - string
-    missing_value  - numeric
-    cartesian_axes - a list of characters that specifies
-                     the cartesian axes (e.g. ['T','Y','X'])
-                     If this is not specified, guesses will be made
-                     using the dimension units (say unit month will
-                     be interpreted for a [T]IME axis.
-                     Specifying cartesian_axes overwirtes the
-                     guesses.
-    dimnames       - a list of strings for the dimension names
-                     (e.g. ['time','lat','lon'])
+    Args:
+        data (numpy.ndarray)
+        coords (a list of numpy.ndarray)
+        dimunits (a list of str): dimension units (e.g. ['months','degrees_N'])
+        varname (str, optional)
+        data_units (str, optional)
+        missing_value (numeric)
+        cartesian_axes (a list of characters): specifies the cartesian axes
+           e.g. ['T','Y','X'].  If this is not specified, guesses will be made
+           using the dimension units (say unit month will be interpreted as a
+           [T]IME axis.  Specifying cartesian_axes overwirtes the guesses.
+        dimnames (a list of str) - dimension names (e.g. ['time','lat','lon'])
+
+    Return:
+        dict
 
     Length of cartesian_axes, dimnames, dimunits and coords need
     to agree with the number of dimensions of data
 
-    Return:
-    a dictionary
     '''
     if len(dimunits) != data.ndim:
         raise Exception("Number of dimunits does not match data.ndim")

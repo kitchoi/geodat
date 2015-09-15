@@ -26,6 +26,7 @@ Contents
    math
    monthly
    parallelprocessing
+   pyferret_func
    signal
    stat
 

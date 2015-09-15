@@ -1186,16 +1186,17 @@ def wgt_sum(var, axis=None):
     if the axis is a "Y" axis, weights are computed using the latitude
     axis in the variable.
     if no axis is given, all axes will be summed over.
-        Inputs:
-            Variable
-            axis (optional)  - can be a string or a list of integer or
-                               an integer
-            weights (optional)
-        if axis is a string, e.g. "xy", the input argument weights will
-        be overwritten
 
-        E.g.
-            (1) wgt_sum(Variable,'xy') will do the area sum
+    Args:
+        var (geodat.nc.Variable)
+        axis (str/int/list of int, optional): along which the array is summed
+
+    Examples:
+        >>> # Area sum
+        >>> wgt_sum(var,'xy')
+
+        >>> # Sum along the first axis
+        >>> wgt_sum(var,0)
     '''
     var.ensureMasked()
     data = var.data
@@ -1314,8 +1315,8 @@ def create_climatology_dimension(calendar, units, time0=None, **dim_args):
     Args:
         calendar (str) : e.g. "julian"
         units (str): e.g. "days since 0001-01-01 00:00:00"
-        time0 (str, default "0001-01-16 00:00:00") - the first value on
-                                                     the time axis
+        time0 (str): default "0001-01-16 00:00:00", the first value on the time
+           axis
 
     Returns:
         geodat.nc.Dimension
@@ -1703,24 +1704,23 @@ def conform_regrid(*args, **kwargs):
 def pyferret_regrid(var, ref_var=None, axis='XY', nlon=None, nlat=None,
                     transform="@lin", *args, **kwargs):
     ''' Use pyferret to perform regridding.
-    Required input:
-    var - geodat.nc.Variable
+
+    Args:
+        var (geodat.nc.Variable): input data
+        ref_var (geodat.nc.Variable): provide the target grid
+        axis (str): which axis needs regridding
+        nlon (int): if ref_var is not provided, a cartesian latitude-longitude global grid is created as the target grid. nlon is the number of longitudes
+        nlat (int): number of latitude, used with nlon and when ref_axis is None
+        transform (str): Mode of regridding.  "@lin" means linear interpolation
+                 "@ave" means preserving area mean.  See `Ferret doc`_
+        verbose (bool)
 
     Either ref_var or (nlon and nlat) has to be specified
 
-    Args:
-    ref_var (geodat.nc.Variable)
-    axis (str) - Any combination of X/Y/Z, e.g. "XY", "Y"
-    nlon (int) - number of longitude on a complete sphere for the targeted grid
-                 (used only if ref_var is None)
-    nlat (int) - number of latitude on a complete sphere for the targeted grid
-                 (used only if ref_var is None)
-    transform (str, default="@lin") - "@lin" Linear interpolation,
-                                      "@ave" Conserve area average
-    verbose (bool, default=False)
-
     Returns:
-    geodat.nc.Variable
+        geodat.nc.Variable
+
+    .. _Ferret doc: http://ferret.pmel.noaa.gov/Ferret/documentation/users-guide
     '''
     import geodat.pyferret_func as _pyferret_func
     import sphere_grid.grid_func
@@ -2030,23 +2030,23 @@ def TimeSlices(var, lower, upper, toggle, no_continuous_duplicate_month=False):
       no_continuous_duplicate_month (bool): default False; make sure the
         difference between calendar months in the time axis is always larger
         than or equal to 1; only suitable for dealing with monthly data.
-    
+
     Returns:
       geodat.nc.Variable
 
     Examples:
         >>> # time segments in Nov, Dec, Jan and Feb
-        >>> TimeSlices(var,11.,2.,"m") 
+        >>> TimeSlices(var,11.,2.,"m")
 
         >>> # time segments from year 1990 to 2000 (inclusive)
-        >>> TimeSlices(var,1990,2000,"Y") 
+        >>> TimeSlices(var,1990,2000,"Y")
 
         >>> '''Say 01-01-0001 and 31-01-0001 are two adjacent time
         >>> steps as far as monthly data is concerned, the second
         >>> time step 31-01-0001 should be considered as the
         >>> beginning of February and not as January.  So we
         >>> want no_continuous_duplicate_month=True '''
-        >>> TimeSlices(var,1,2,"m",True) 
+        >>> TimeSlices(var,1,2,"m",True)
     """
     time = var.getDate(toggle, no_continuous_duplicate_month)
     taxis = var.getCAxes().index('T')
