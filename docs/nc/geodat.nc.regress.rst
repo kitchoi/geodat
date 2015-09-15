@@ -3,4 +3,4 @@ geodat.nc.regress
 
 .. currentmodule:: geodat.nc
 
-.. autodata:: regress
+.. autofunction:: regress

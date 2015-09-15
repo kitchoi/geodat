@@ -3,4 +3,4 @@ geodat.nc.create_monthly
 
 .. currentmodule:: geodat.nc
 
-.. autodata:: create_monthly
+.. autofunction:: create_monthly

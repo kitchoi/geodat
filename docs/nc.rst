@@ -30,8 +30,10 @@ The following functions are shortcuts for applying frequently used functions fro
 
 Manipulation along time axis
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. currentmodule:: geodat.nc
 .. autosummary::
    :toctree: nc
+   :template: autosummary/function.rst
    
    climatology
    anomaly
@@ -50,6 +52,7 @@ Map regridding
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 .. autosummary::
    :toctree: nc
+   :template: autosummary/function.rst
 
    pyferret_regrid
    regrid
@@ -61,6 +64,7 @@ Mathematical functions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 .. autosummary::
    :toctree: nc
+   :template: autosummary/function.rst
    
    nc_cal
    div
@@ -72,6 +76,7 @@ Statistical analysis and signal processing
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 .. autosummary::
    :toctree: nc
+   :template: autosummary/function.rst
 
    ave
    wgt_ave
@@ -85,6 +90,7 @@ Indexing and Slicing
 ^^^^^^^^^^^^^^^^^
 .. autosummary::
    :toctree: nc
+   :template: autosummary/function.rst
 
    concatenate
    ensemble
@@ -95,6 +101,7 @@ File I/O
 
 .. autosummary::
    :toctree: nc
+   :template: autosummary/function.rst
    
    getvar
    savefile
@@ -104,6 +111,7 @@ Visualisation
 ^^^^^^^^^^^^^^^^^^^
 .. autosummary::
    :toctree: nc
+   :template: autosummary/function.rst
    
    contour
    contourf
