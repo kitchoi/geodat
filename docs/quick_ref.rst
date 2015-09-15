@@ -8,7 +8,7 @@ Quick References
 ===================================================================
 
 Extracting variable from a NetCDF file
---------------------
+-----------------------------------------
 
 You can use :py:func:`~geodat.nc.getvar` for extracting one variable and its associated dimensions from a NetCDF file.
 
@@ -23,7 +23,7 @@ You can use :py:func:`~geodat.nc.getvar` for extracting one variable and its ass
   <geodat.nc.Variable sst(time,lat,lon), shape: (120, 180, 360)>
 
 Print basic info about a Variable
---------------------
+------------------------------------
   >>> sst.info()
   <geodat.nc.Variable sst(time,lat,lon), shape: (120, 180, 360)>
   Attributes:
@@ -39,7 +39,7 @@ Print basic info about a Variable
 
 
 Computing time average
---------------------
+---------------------------
   >>> print sst
   <geodat.nc.Variable sst(time,lat,lon), shape: (120, 180, 360)>
   >>> sst_tave = sst.time_ave()
