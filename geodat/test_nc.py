@@ -47,10 +47,6 @@ class NCVariableTestCase(unittest.TestCase):
         self.var = var_dummy(12,50,60)
         self.__name__ = "temp"
 
-    def tearDown(self):
-        if os.path.exists("test_nc_file.nc"):
-            os.remove("test_nc_file.nc")
-        
     def test_getvar_data(self):
         self.assertEqual(self.var.data.shape,(12,50,60))
     
@@ -89,6 +85,8 @@ class NCVariableTestCase(unittest.TestCase):
         geodat.nc.savefile("test_nc_file.nc",self.var)
         tmp = geodat.nc.getvar("test_nc_file.nc","temp")
         self.assertTrue(numpy.allclose(self.var.data,tmp.data))
+        if os.path.exists("test_nc_file.nc"):
+            os.remove("test_nc_file.nc")
 
     @skipUnlessSpharmExists()
     def test_regrid_spharm(self):
