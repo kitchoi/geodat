@@ -931,7 +931,7 @@ class Variable(object):
         '''
         FillValue = self.getattr('_FillValue', None)
         missing_value = self.getattr('missing_value', None)
-        default = numpy.ma.default_fill_value(self.data)
+        default = numpy.asscalar(numpy.ma.default_fill_value(self.data))
         return missing_value or FillValue or default
 
     def ensureMasked(self):
