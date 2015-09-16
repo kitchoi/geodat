@@ -32,7 +32,7 @@ Manipulation along time axis
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 .. currentmodule:: geodat.nc
 .. autosummary::
-   :toctree: nc
+   :toctree: generated
    :template: autosummary/function.rst
    
    climatology
@@ -51,7 +51,7 @@ Manipulation along time axis
 Map regridding
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 .. autosummary::
-   :toctree: nc
+   :toctree: generated
    :template: autosummary/function.rst
 
    pyferret_regrid
@@ -63,7 +63,7 @@ Map regridding
 Mathematical functions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 .. autosummary::
-   :toctree: nc
+   :toctree: generated
    :template: autosummary/function.rst
    
    nc_cal
@@ -75,7 +75,7 @@ Mathematical functions
 Statistical analysis and signal processing
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 .. autosummary::
-   :toctree: nc
+   :toctree: generated
    :template: autosummary/function.rst
 
    ave
@@ -89,7 +89,7 @@ Statistical analysis and signal processing
 Indexing and Slicing
 ^^^^^^^^^^^^^^^^^
 .. autosummary::
-   :toctree: nc
+   :toctree: generated
    :template: autosummary/function.rst
 
    concatenate
@@ -100,7 +100,7 @@ File I/O
 ^^^^^^^^^^^^^^^^^^^
 
 .. autosummary::
-   :toctree: nc
+   :toctree: generated
    :template: autosummary/function.rst
    
    getvar
@@ -110,7 +110,7 @@ File I/O
 Visualisation
 ^^^^^^^^^^^^^^^^^^^
 .. autosummary::
-   :toctree: nc
+   :toctree: generated
    :template: autosummary/function.rst
    
    contour
@@ -122,7 +122,7 @@ Visualisation
 Working with PyFerret
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 .. autosummary::
-   :toctree: nc
+   :toctree: generated
    :template: autosummary/function.rst
 
    var2fer
