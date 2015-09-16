@@ -1,7 +1,14 @@
 from functools import wraps
+
 import numpy
-import pyferret
-import geodat.nc as _NC
+
+try:
+    import pyferret
+    PYFERRET_INSTALLED = True
+except ImportError:
+    PYFERRET_INSTALLED = False
+
+import geodat.units
 
 
 def Num2Fer(data, coords, dimunits,
@@ -56,7 +63,7 @@ def Num2Fer(data, coords, dimunits,
                    'T': pyferret.AXISTYPE_CUSTOM}
     # Make guessses for the axis type
     if cartesian_axes is None:
-        cartesian_axes = [_NC._assign_caxis_(dimunit)
+        cartesian_axes = [geodat.units.assign_caxis(dimunit)
                           for dimunit in dimunits]
 
     if len(cartesian_axes) != data.ndim:
@@ -87,43 +94,6 @@ def Num2Fer(data, coords, dimunits,
                            else cartesian_axes.index(cax)
                            for cax in cartesian_axes]
     return fer_var
-
-
-def Var2Fer(var, name=None):
-    ''' Given a geodat.nc.Variable, return a dictionary
-    that resemble the Ferret data variable structure
-    to be passed to pyferret.putdata
-    '''
-    if name is None:
-        varname = var.varname
-    else:
-        varname = name
-
-    return Num2Fer(data=var.data, missing_value=var.getMissingValue(),
-                   coords=var.getAxes(),
-                   dimunits=[dim.units for dim in var.dims],
-                   varname=varname, data_units=var.getattr('units', ''),
-                   cartesian_axes=var.getCAxes(), dimnames=var.getDimnames())
-
-def Fer2Var(var):
-    ''' Convert the dictionary returned by pyferret.getdata into a
-    geodat.nc.Variable
-
-    Args:
-    var  - a dictionary returned by pyferret.getdata
-
-    Returns:
-    geodat.nc.Variable
-    '''
-    result = Fer2Num(var)
-    dims = [_NC.Dimension(data=result['coords'][i],
-                          units=result['dimunits'][i],
-                          dimname=result['dimnames'][i])
-            for i in range(len(result['coords']))]
-    newvar = _NC.Variable(data=result['data'], dims=dims,
-                          varname=result['varname'],
-                          history='From Ferret')
-    return newvar
 
 
 def Fer2Num(var):
@@ -232,97 +202,6 @@ def run_worker(f):
     return run_func
 
 
-def regrid_once(var, ref_var, axis,
-                verbose=False, prerun=None, transform='@lin'):
-    ''' Now only deal with regridding without the time axis
-    Input:
-    var (geodat.nc.Variable) : whose data will be regridded onto the grid
-                             given by ref_var
-    ref_var (geodat.nc.Variable): supplies the grid for regridding
-    axis (str) :      - the axis for regridding, e.g. "X","Y","XY"
-    verbose (bool) : whether to print progress (default: False)
-    prerun (a list of strings) : commands to be run at the start (default: None)
-    transform (str): "@lin" (DEFAULT: Linear interpolation) or
-                     "@ave" (Conserve area average),...see Ferret doc
-
-    Returns
-    geodat.nc.Variable
-    '''
-    pyferret.start(quiet=True, journal=verbose,
-                   verify=False, server=True)
-    # commands to run before regridding
-    if prerun is not None:
-        if type(prerun) is str:
-            pyferret.run(prerun)
-        elif type(prerun) is list:
-            for s in prerun:
-                if type(s) is str:
-                    pyferret.run(prerun)
-                else:
-                    raise Exception("prerun has to be either a string or "+\
-                                    "a list of string")
-        else:
-            raise Exception("prerun has to be either a string or a list of"+\
-                            "string")
-
-    # Make sure axis is a string denoting X or Y axis
-    # In case it is a integer, read the cartesian axis for that axis
-    if type(axis) is not str:
-        if numpy.iterable(axis) == 0:
-            axis = var.getCAxes()[axis]
-        else:
-            axis = ''.join([var.getCAxes()[ax] for ax in axis])
-
-    axis = axis.upper()
-    # Construct the dictionary read by pyferret.putdata
-    source_fer = Var2Fer(var, name='source')
-    dest_fer = Var2Fer(ref_var, name='dest')
-    if verbose:
-        print source_fer
-        print dest_fer
-    pyferret.putdata(source_fer, axis_pos=source_fer['axis_pos'])
-    if verbose:
-        print "Put source variable"
-        pyferret.run('show grid '+var.varname)
-    pyferret.putdata(dest_fer, axis_pos=dest_fer['axis_pos'])
-    if verbose:
-        print "Put destination variable"
-        pyferret.run('show grid '+ref_var.varname)
-
-    pyfer_command = 'let result = source[g'+axis.lower()+'=dest'+transform+']'
-    pyferret.run(pyfer_command)
-    if verbose:
-        print "Regridded in FERRET"
-        pyferret.run('show grid result')
-
-    # Get results
-    result_ref = pyferret.getdata('result')
-    if verbose: print "Get data from FERRET"
-    # Convert from ferret data structure to geodat.nc.Variable
-    tmp_result = Fer2Var(result_ref)
-    tmp_result.varname = var.varname
-    # Preserve dimension order (Ferret reverts the order)
-    neworder = [tmp_result.getCAxes().index(cax)
-                for cax in var.getCAxes()]
-    dims = [tmp_result.dims[tmp_result.getCAxes().index(cax)]
-            if cax in axis
-            else var.dims[iax]
-            for iax, cax in enumerate(var.getCAxes())]
-    # Create the geodat.nc.Variable to be returned
-    result = _NC.Variable(
-        data=tmp_result.data.transpose(neworder).astype(var.data.dtype),
-        dims=dims, parent=var,
-        history='Regridding using '+axis+' of '+ref_var.varname)
-
-    status = pyferret.stop()
-    if verbose:
-        if status:
-            print "PyFerret stopped."
-        else:
-            print "PyFerret failed to stop."
-    return result
-
-
 def regrid_once_primitive(var, ref_var, axis,
                           verbose=False, prerun=None, transform='@ave'):
     ''' A generic function that regrids a variable without the dependence of
@@ -334,7 +213,7 @@ def regrid_once_primitive(var, ref_var, axis,
     ref_var (dict)  :  arguments for Num2Fer.
                        This supplies the grid for regridding
                        Required keys: coords,dimunits
-    axis (str) : the axis for regridding (2D only), e.g. 'X'/'Y'/'XY'/"YX"
+    axis (str) : the axis for regridding e.g. 'X'/'Y'/'XY'/"YX"
     verbose (bool) : whether to print progress (default: False)
     prerun (a list of str) : commands to be run at the start (default: None)
     transform (str): "@ave" (Conserve area average),
@@ -359,10 +238,11 @@ def regrid_once_primitive(var, ref_var, axis,
             raise Exception("prerun has to be either a string or a list of "+\
                             "string")
 
+    assert isinstance(axis,str)
     axis = axis.upper()
     # Make sure axis is a string denoting X or Y axis
-    if axis not in ['X', 'Y', 'XY', 'YX']:
-        raise Exception("Currently axis can only be X/Y/XY")
+    #if axis not in ['X', 'Y', 'XY', 'YX']:
+    #    raise Exception("Currently axis can only be X/Y/XY")
 
     # Construct the source data read by pyferret.putdata
     source_fer = Num2Fer(varname="source", **var)
@@ -399,9 +279,9 @@ def regrid_once_primitive(var, ref_var, axis,
     tmp_result = Fer2Num(result_ref)
     if var.has_key('varname'):
         tmp_result['varname'] = var['varname']
-    tmp_caxes = [_NC._assign_caxis_(dimunit)
+    tmp_caxes = [geodat.units.assign_caxis(dimunit)
                  for dimunit in tmp_result['dimunits']]
-    var_caxes = [_NC._assign_caxis_(dimunit)
+    var_caxes = [geodat.units.assign_caxis(dimunit)
                  for dimunit in var['dimunits']]
     # Preserve dimension order (Ferret reverts the order)
     neworder = [tmp_caxes.index(cax)
@@ -427,7 +307,6 @@ def regrid_once_primitive(var, ref_var, axis,
     return result
 
 
-regrid = run_worker(regrid_once)
 regrid_primitive = run_worker(regrid_once_primitive)
 
 if __name__ == '__main__':

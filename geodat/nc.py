@@ -12,12 +12,16 @@ import warnings
 import logging
 from functools import wraps
 import datetime
+import inspect
 
 import numpy
 import scipy.io.netcdf as netcdf
+from scipy.ndimage.filters import gaussian_filter
 import pylab
 from netCDF4 import num2date as _num2date
 from netCDF4 import date2num as _date2num
+from netCDF4 import Dataset as _netCDF4_Dataset
+
 from dateutil.relativedelta import relativedelta
 
 import geodat.keepdims as keepdims
@@ -26,7 +30,10 @@ import geodat.stat
 import geodat.math
 import geodat.monthly
 import geodat.plot.mapplot
+import geodat.pyferret_func
+import geodat.units
 
+import sphere_grid.grid_func
 
 def getvar(filename, varname, *args, **kwargs):
     ''' Short hand for retrieving variable from a netcdf file
@@ -140,36 +147,6 @@ def _general_region(region):
     return results
 
 
-def _assign_caxis_(dimunit):
-    '''
-    Assign cartesian_axis (T/Z/Y/X) to the axis with identifiable axis units.
-
-    Axes without identifiable units will be set to None
-
-    Args:
-        unit (str)
-
-    Returns:
-        str
-    '''
-    assert type(dimunit) is str
-    dimunit = dimunit.split()[0]
-    conventions = {'T': ['second', 'seconds', 'sec', 'minute', 'minutes', 'min',
-                         'hour', 'hours', 'h', 'day', 'days', 'd',
-                         'month', 'months', 'mon', 'year', 'years', 'y'],
-                   'Z': ['bar', 'millibar', 'decibar', 'atm', 'atmosphere',
-                         'pascal', 'Pa', 'hpa',
-                         'meters', 'meter', 'm', 'kilometer', 'km', 'density'],
-                   'Y': ['degrees_north', 'degree_north', 'degree_n',
-                         'degrees_n', 'degreen', 'degreesn'],
-                   'X': ['degrees_east', 'degree_east', 'degree_e',
-                         'degrees_e', 'degreee', 'degreese']}
-    invaxunits = {unit.lower():ax
-                  for ax, units in conventions.items()
-                  for unit in units}
-    return invaxunits.get(dimunit.lower(), None)
-
-
 class Dimension(object):
     """
     A container for handling physical dimensions such as time, latitude.
@@ -267,7 +244,7 @@ class Dimension(object):
         cax = atts.get('axis', atts.get('cartesian_axis', None))
         if cax is None:
             if self.units is not None:
-                cax = _assign_caxis_(self.units)
+                cax = geodat.units.assign_caxis(self.units)
         return cax
 
 
@@ -1701,8 +1678,75 @@ def conform_regrid(*args, **kwargs):
     return regridded
 
 
+
+
+def Fer2Var(var):
+    ''' Convert the dictionary returned by pyferret.getdata into a
+    geodat.nc.Variable
+
+    Args:
+        var (dict): as is returned by pyferret.getdata
+
+    Returns:
+        geodat.nc.Variable
+    '''
+    if not pyferret_func.PYFERRET_INSTALLED:
+        raise ImportError("No pyferret installed")
+
+    result = geodat.pyferret_func.Fer2Num(var)
+    dims = [Dimension(data=result['coords'][i],
+                      units=result['dimunits'][i],
+                      dimname=result['dimnames'][i])
+            for i in range(len(result['coords']))]
+    newvar = Variable(data=result['data'], dims=dims,
+                      varname=result['varname'],
+                      history='From Ferret')
+    return newvar
+
+
+def var2fer(var, name=None):
+    ''' Given a geodat.nc.Variable, return a dictionary
+    that resemble the Ferret data variable structure
+    to be passed to pyferret.putdata
+
+    Args:
+        var (geodat.nc.Variable)
+        name (str): optional, new variable name (default var.varname)
+
+    Returns:
+        dict: to be used by pyferret.putdata
+    '''
+    if not pyferret_func.PYFERRET_INSTALLED:
+        raise ImportError("No pyferret installed")
+
+    num_input = _var_to_num_input(var)
+    if name is not None:
+        assert isinstance(name,str)
+        num_input["varname"] = name
+
+    return geodat.pyferret_func.Num2Fer(num_input)
+
+
+def _var_to_num_input(var):
+    ''' Convert a geodat.nc.Variable instance to a dictionary ready to be used
+    by pyferret_func.Num2Fer
+
+    Arg:
+        var (geodat.nc.Variable)
+
+    Returns:
+        dict
+    '''
+    return dict(data=var.data, missing_value=var.getMissingValue(),
+                coords=var.getAxes(),
+                dimunits=[dim.units for dim in var.dims],
+                varname=var.varname, data_units=var.getattr('units', ''),
+                cartesian_axes=var.getCAxes(),
+                dimnames=var.getDimnames())
+
+
 def pyferret_regrid(var, ref_var=None, axis='XY', nlon=None, nlat=None,
-                    transform="@lin", *args, **kwargs):
+                    verbose=False, prerun=None, transform="@lin"):
     ''' Use pyferret to perform regridding.
 
     Args:
@@ -1711,9 +1755,11 @@ def pyferret_regrid(var, ref_var=None, axis='XY', nlon=None, nlat=None,
         axis (str): which axis needs regridding
         nlon (int): if ref_var is not provided, a cartesian latitude-longitude global grid is created as the target grid. nlon is the number of longitudes
         nlat (int): number of latitude, used with nlon and when ref_axis is None
+        verbose (bool): default False
+        prerun (str): Ferret command to be run before the regridding
+
         transform (str): Mode of regridding.  "@lin" means linear interpolation
                  "@ave" means preserving area mean.  See `Ferret doc`_
-        verbose (bool)
 
     Either ref_var or (nlon and nlat) has to be specified
 
@@ -1722,8 +1768,9 @@ def pyferret_regrid(var, ref_var=None, axis='XY', nlon=None, nlat=None,
 
     .. _Ferret doc: http://ferret.pmel.noaa.gov/Ferret/documentation/users-guide
     '''
-    import geodat.pyferret_func as _pyferret_func
-    import sphere_grid.grid_func
+    if not pyferret_func.PYFERRET_INSTALLED:
+        raise ImportError("No pyferret installed")
+
     if ref_var is None:
         # If ref_var is not given, use nlon and nlat instead
         if nlon is None or nlat is None:
@@ -1760,8 +1807,10 @@ def pyferret_regrid(var, ref_var=None, axis='XY', nlon=None, nlat=None,
     ref_var_slice = tuple([slice(0, 1) if cax not in axis.upper()
                            else slice(None)
                            for cax in ref_var.getCAxes()])
-    return _pyferret_func.regrid(var, ref_var[ref_var_slice].squeeze(), axis,
-                                 transform=transform, *args, **kwargs)
+    return geodat.pyferret_func.regrid_primitive(
+        _var_to_num_input(var),
+        _var_to_num_input(ref_var[ref_var_slice].squeeze()),
+        axis, verbose=verbose, prerun=prerun, transform=transform)
 
 
 def regrid(var, nlon, nlat, verbose=False):
@@ -1778,7 +1827,6 @@ def regrid(var, nlon, nlat, verbose=False):
     extend the function to handle rank-3+ data
     by flattening the extra dimension into one dimension
     '''
-    import sphere_grid.grid_func
     ilat = var.getCAxes().index('Y')
     ilon = var.getCAxes().index('X')
     if var.data.ndim == 3:
@@ -1828,7 +1876,7 @@ def gaus_filter(var, gausize):
     Returns:
     geodat.nc.Variable
     '''
-    from scipy.ndimage.filters import gaussian_filter
+
     if var.data.mask.any():
         warnings.warn('''There are masked values.
         They are assigned zero before filtering''')
@@ -1862,9 +1910,6 @@ def savefile(filename, listofvar, overwrite=False,
     This function, however different from other functions in the module,
     uses NetCDF4 Dataset to write data
     '''
-    import inspect
-    from netCDF4 import Dataset
-
     # Handle endian
     endian_code = {'>':'big', '<':'little'}
 
@@ -1893,11 +1938,13 @@ def savefile(filename, listofvar, overwrite=False,
 
     if not os.path.exists(filename) or overwrite:
         # Create temporary file
-        ncfile = Dataset(filename+'.tmp.nc', 'w', format='NETCDF3_CLASSIC')
+        ncfile = _netCDF4_Dataset(filename+'.tmp.nc', 'w',
+                                  format='NETCDF3_CLASSIC')
     else:
         # Append existing file
         assert appendall and os.path.exists(filename)
-        ncfile = Dataset(filename, 'a', format='NETCDF3_CLASSIC')
+        ncfile = _netCDF4_Dataset(filename, 'a',
+                                  format='NETCDF3_CLASSIC')
 
     # Add history to the file
     ncfile.history = 'Created from script: '+ inspect.stack()[1][1]
