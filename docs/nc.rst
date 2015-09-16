@@ -119,6 +119,15 @@ Visualisation
    plot_vs_axis
 
 
+Working with PyFerret
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. autosummary::
+   :toctree: nc
+   :template: autosummary/function.rst
+
+   var2fer
+   fer2var
+
 
 
 Examples
