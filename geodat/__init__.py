@@ -1,7 +1,5 @@
-import nc
-import keepdims
 import signal
-import stat
+import nc
 
-__all__ = ['arrays','keepdims',"math",'monthly','nc','parallelprocessing',
-           'plot','pyferret_func','signal','stat']
+#__all__ = ['arrays','keepdims',"math",'monthly','nc','parallelprocessing',
+#           'plot','pyferret_func','signal','stat']
