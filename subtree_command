@@ -1,0 +1,2 @@
+git subtree pull --prefix=geodat geodat-github master
+git subtree push --prefix=geodat geodat-github master

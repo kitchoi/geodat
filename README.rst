@@ -1,7 +1,7 @@
 Geophysical Data Analysis Tool (GeoDAT)'s documentation
 ===================================================================
 
-GeoDAT is a python library that provides utilities for handling, analysing and visualising geophysical climate data.  It has several features:
+GeoDAT is a python library that provides utilities for handling, analysing and visualising geophysical climate data.  Here are just a few of the functions of GeoDAT:
 
 * Extract data from and write to NetCDF files
 * Associate variables with dimensions
@@ -14,7 +14,7 @@ Quick References
 ===================================================================
 
 Extracting variable from a NetCDF file
---------------------
+---------------------------------------
 
 You can use :py:func:`~geodat.nc.getvar` for extracting one variable and its associated dimensions from a NetCDF file.
 
@@ -29,7 +29,7 @@ You can use :py:func:`~geodat.nc.getvar` for extracting one variable and its ass
   <geodat.nc.Variable sst(time,lat,lon), shape: (120, 180, 360)>
 
 Print basic info about a Variable
---------------------
+----------------------------------
   >>> sst.info()
   <geodat.nc.Variable sst(time,lat,lon), shape: (120, 180, 360)>
   Attributes:
@@ -45,7 +45,7 @@ Print basic info about a Variable
 
 
 Computing time average
---------------------
+-----------------------
   >>> print sst
   <geodat.nc.Variable sst(time,lat,lon), shape: (120, 180, 360)>
   >>> sst_tave = sst.time_ave()

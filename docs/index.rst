@@ -6,7 +6,7 @@
 Geophysical Data Analysis Tool (GeoDAT)'s documentation
 ===================================================================
 
-GeoDAT is a python library that provides utilities for handling, analysing and visualising geophysical climate data.  It has several features:
+GeoDAT is a python library that provides utilities for handling, analysing and visualising geophysical climate data.  Here are just a few of the functions of GeoDAT:
 
 * Extract data from and write to NetCDF files
 * Associate variables with dimensions
