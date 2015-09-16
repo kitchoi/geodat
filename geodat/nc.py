@@ -1680,7 +1680,7 @@ def conform_regrid(*args, **kwargs):
 
 
 
-def Fer2Var(var):
+def fer2var(var):
     ''' Convert the dictionary returned by pyferret.getdata into a
     geodat.nc.Variable
 
