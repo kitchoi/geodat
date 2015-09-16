@@ -136,57 +136,6 @@ def Fer2Num(var):
     return results
 
 
-def send_var_run_get_output(input_vars, command, output_name,
-                            verbose=False, output_caxes=None):
-    pyferret.start(quiet=True, journal=verbose,
-                   verify=False, server=True)
-
-    # Convert from geodat.nc.Variable to dictionary to be
-    # fed to Ferret
-    input_fer_var = {varname: Var2Fer(var, name=varname)
-                     for varname, var in input_vars.items()}
-
-    # Put data
-    for varname, fer_var in input_fer_var.items():
-        pyferret.putdata(fer_var, axis_pos=fer_var['axis_pos'])
-        if verbose:
-            print "Put variable:"+varname
-            pyferret.run('show grid '+fer_var['name'])
-
-    # Run command
-    pyferret.run(command)
-    if verbose:
-        print "Run command:"+command
-
-    # Get results
-    result_fer = pyferret.getdata(output_name)
-    if verbose:
-        print "Get {output_name} from FERRET".format(output_name=output_name)
-
-    # Convert from ferret data structure to geodat.nc.Variable
-    result = Fer2Var(result_fer)
-
-    # Preserve dimension order (Ferret reverts the order)
-    if output_caxes is not None:
-        assert isinstance(output_caxes, list)
-        neworder = [result.getCAxes().index(cax)
-                    for cax in output_caxes]
-        new_dims = [result.dims[result.getCAxes().index(cax)]
-                    for cax in output_caxes]
-        result.data = result.data.transpose(neworder)
-        result.dims = new_dims
-
-    result.addHistory(command)
-    status = pyferret.stop()
-    if verbose:
-        if status:
-            print "PyFerret stopped."
-        else:
-            print "PyFerret failed to stop."
-    return result
-
-
-
 def run_worker(f):
     ''' A workaround for clearing memory used by PyFerret
     '''
