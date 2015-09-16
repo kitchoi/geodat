@@ -4,9 +4,11 @@ import numpy
 
 try:
     import pyferret
-    PYFERRET_INSTALLED = True
+    _PYFERRET_INSTALLED = True
+    _import_error = None
 except ImportError:
-    PYFERRET_INSTALLED = False
+    _PYFERRET_INSTALLED = False
+    _import_error = ImportError("No pyferret is installed")
 
 import geodat.units
 
@@ -37,10 +39,14 @@ def Num2Fer(data, coords, dimunits,
     to agree with the number of dimensions of data
 
     '''
+    if not _PYFERRET_INSTALLED:
+        raise _import_error
+
     if len(dimunits) != data.ndim:
         raise Exception("Number of dimunits does not match data.ndim")
     if len(coords) != data.ndim:
         raise Exception("Number of coords does not match data.ndim")
+
     fer_var = {}
     # Define the variable
     fer_var['data'] = data.copy()
@@ -111,6 +117,9 @@ def Fer2Num(var):
     dimunits  - a list of strings, the units for the dimensions
     dimnames  - a list of strings, the names for the dimensions
     '''
+    if not _PYFERRET_INSTALLED:
+        raise _import_error
+
     results = {}
     results['coords'] = [ax for ax in var['axis_coords']
                          if ax is not None]
@@ -170,6 +179,9 @@ def regrid_once_primitive(var, ref_var, axis,
     Return:
     a dictionary
     '''
+    if not _PYFERRET_INSTALLED:
+        raise _import_error
+
     pyferret.start(quiet=True, journal=verbose,
                    verify=False, server=True)
     # commands to run before regridding
