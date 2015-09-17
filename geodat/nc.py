@@ -1693,7 +1693,7 @@ def fer2var(var):
     if not pyferret_func.PYFERRET_INSTALLED:
         raise ImportError("No pyferret installed")
 
-    result = geodat.pyferret_func.Fer2Num(var)
+    result = geodat.pyferret_func.fer2num(var)
     dims = [Dimension(data=result['coords'][i],
                       units=result['dimunits'][i],
                       dimname=result['dimnames'][i])
@@ -1724,12 +1724,12 @@ def var2fer(var, name=None):
         assert isinstance(name,str)
         num_input["varname"] = name
 
-    return geodat.pyferret_func.Num2Fer(num_input)
+    return geodat.pyferret_func.num2fer(num_input)
 
 
 def _var_to_num_input(var):
     ''' Convert a geodat.nc.Variable instance to a dictionary ready to be used
-    by pyferret_func.Num2Fer
+    by pyferret_func.num2fer
 
     Arg:
         var (geodat.nc.Variable)

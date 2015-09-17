@@ -1,8 +1,10 @@
+import warnings
+
 import numpy
 import numpy.ma
 
 def keepdims(f):
-    
+
     def new_f(arr,axis,*args,**kwargs):
         if isinstance(arr,numpy.ma.core.MaskedArray):
             npmod = numpy.ma
@@ -14,8 +16,8 @@ def keepdims(f):
             f_ma = f
         result = f_ma(arr,axis,*args,**kwargs)
         return result
-    
-    
+
+
     def new_f_axis(arr,axis,*args,**kwargs):
         # Only one axis is requested
         result = new_f(arr,axis,*args,**kwargs)
@@ -53,15 +55,15 @@ def keepdims(f):
             result = npmod.array([result],dtype=arr.dtype)
             return npmod.ones((1,)*ndims)*result
         else:# insert the axes back
-            return result[[numpy.newaxis if i in axis else slice(None) for i in range(ndims) ]] 
-    
+            return result[[numpy.newaxis if i in axis else slice(None) for i in range(ndims) ]]
+
     def new_f_dispatch(arr,axis=None,*args,**kwargs):
         if axis is None:
             if arr.ndim == 0:
                 axis = 0
             else:
                 axis=range(0,arr.ndim)
-        
+
         if isinstance(axis,int):
             func = new_f_axis
         else:
@@ -72,7 +74,6 @@ def keepdims(f):
             if isinstance(arr,numpy.ma.core.MaskedArray) and \
                 func == new_f_axes:
                 try:
-                    import warnings
                     result.mask = keepdims(numpy.max)(arr.mask,axis)
                 except ZeroDivisionError:
                     warnings.warn('ZeroDivisionError while propagaing mask.')
@@ -80,7 +81,7 @@ def keepdims(f):
                 except ValueError:
                     warnings.warn('ValueError while propaging mask.')
                     pass
-            
+
         # Try to preserve fill value
         if isinstance(arr,numpy.ma.core.MaskedArray):
             try:
@@ -106,4 +107,3 @@ if __name__ == '__main__':
     for i in range(4):
         for j in range(i+1,4):
             assert numpy.allclose(mean(A,axis=(i,j)).squeeze(),numpy.mean(numpy.mean(A,axis=j),axis=i))
-

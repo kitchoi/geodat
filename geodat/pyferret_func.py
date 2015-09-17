@@ -1,19 +1,20 @@
 from functools import wraps
+import multiprocessing
 
 import numpy
 
 try:
     import pyferret
     _PYFERRET_INSTALLED = True
-    _import_error = None
+    _IMPORT_PYFERRET_ERROR = None
 except ImportError:
     _PYFERRET_INSTALLED = False
-    _import_error = ImportError("No pyferret is installed")
+    _IMPORT_PYFERRET_ERROR = ImportError("No pyferret is installed")
 
 import geodat.units
 
 
-def Num2Fer(data, coords, dimunits,
+def num2fer(data, coords, dimunits,
             varname="UNKNOWN", data_units=None, missing_value=None,
             cartesian_axes=None, dimnames=None):
     ''' Create a dictionary that resemble the Ferret
@@ -40,7 +41,7 @@ def Num2Fer(data, coords, dimunits,
 
     '''
     if not _PYFERRET_INSTALLED:
-        raise _import_error
+        raise _IMPORT_PYFERRET_ERROR
 
     if len(dimunits) != data.ndim:
         raise Exception("Number of dimunits does not match data.ndim")
@@ -102,23 +103,22 @@ def Num2Fer(data, coords, dimunits,
     return fer_var
 
 
-def Fer2Num(var):
+def fer2num(var):
     ''' Filter the dictionary returned by pyferret.getdata
     PyFerret usually returns data with extra singlet dimension
     Need to filter those
-    Input:
-    var       - a dictionary returned by pyferret.getdata
+
+    Args:
+        var (dict): as is returned by pyferret.getdata
 
     Returns:
-    A dictionary with the following items
-    data      - a numpy ndarray
-    varname   - the name of the variable
-    coords    - a list of numpy ndarrays for the dimensions
-    dimunits  - a list of strings, the units for the dimensions
-    dimnames  - a list of strings, the names for the dimensions
+        dict: {'data': a numpy ndarray, 'varname': the name of the variable,\n
+           'coords':  a list of numpy ndarrays for the dimensions,
+           'dimunits': a list of strings, the units for the dimensions,
+           'dimnames': a list of strings, the names for the dimensions}
     '''
     if not _PYFERRET_INSTALLED:
-        raise _import_error
+        raise _IMPORT_PYFERRET_ERROR
 
     results = {}
     results['coords'] = [ax for ax in var['axis_coords']
@@ -148,7 +148,6 @@ def Fer2Num(var):
 def run_worker(f):
     ''' A workaround for clearing memory used by PyFerret
     '''
-    import multiprocessing
     @wraps(f)
     def run_func(*args, **kwargs):
         P = multiprocessing.Pool(1)
@@ -165,22 +164,22 @@ def regrid_once_primitive(var, ref_var, axis,
     ''' A generic function that regrids a variable without the dependence of
     geodat.nc.Variable
 
-    Input:
-    var (dict) : arguments for Num2Fer
+    Args:
+        var (dict) : arguments for num2fer
                  Required keys: data,coords,dimunits
-    ref_var (dict)  :  arguments for Num2Fer.
+        ref_var (dict)  :  arguments for num2fer.
                        This supplies the grid for regridding
                        Required keys: coords,dimunits
-    axis (str) : the axis for regridding e.g. 'X'/'Y'/'XY'/"YX"
-    verbose (bool) : whether to print progress (default: False)
-    prerun (a list of str) : commands to be run at the start (default: None)
-    transform (str): "@ave" (Conserve area average),
+        axis (str) : the axis for regridding e.g. 'X'/'Y'/'XY'/"YX"
+        verbose (bool) : whether to print progress (default: False)
+        prerun (a list of str) : commands to be run at the start (default: None)
+        transform (str): "@ave" (Conserve area average),
                      "@lin" (Linear interpolation),...see Ferret doc
-    Return:
-    a dictionary
+    Returns:
+        dict
     '''
     if not _PYFERRET_INSTALLED:
-        raise _import_error
+        raise _IMPORT_PYFERRET_ERROR
 
     pyferret.start(quiet=True, journal=verbose,
                    verify=False, server=True)
@@ -199,21 +198,21 @@ def regrid_once_primitive(var, ref_var, axis,
             raise Exception("prerun has to be either a string or a list of "+\
                             "string")
 
-    assert isinstance(axis,str)
+    assert isinstance(axis, str)
     axis = axis.upper()
     # Make sure axis is a string denoting X or Y axis
     #if axis not in ['X', 'Y', 'XY', 'YX']:
     #    raise Exception("Currently axis can only be X/Y/XY")
 
     # Construct the source data read by pyferret.putdata
-    source_fer = Num2Fer(varname="source", **var)
+    source_fer = num2fer(varname="source", **var)
 
     # Fill in unnecessary input for Ferret
     if not ref_var.has_key('data'):
         ref_var['data'] = numpy.zeros((1,)*len(ref_var['coords']))
 
     # Construct the destination data read by pyferret.putdata
-    dest_fer = Num2Fer(varname="dest", **ref_var)
+    dest_fer = num2fer(varname="dest", **ref_var)
 
     if verbose:
         print source_fer
@@ -237,7 +236,7 @@ def regrid_once_primitive(var, ref_var, axis,
     result_ref = pyferret.getdata('result')
     if verbose: print "Get data from FERRET"
     # Convert from ferret data structure to geodat.nc.Variable
-    tmp_result = Fer2Num(result_ref)
+    tmp_result = fer2num(result_ref)
     if var.has_key('varname'):
         tmp_result['varname'] = var['varname']
     tmp_caxes = [geodat.units.assign_caxis(dimunit)

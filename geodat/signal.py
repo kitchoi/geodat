@@ -1,3 +1,5 @@
+import warnings
+
 import numpy
 import geodat.keepdims as keepdims
 import scipy.stats
@@ -137,7 +139,6 @@ def princomp(data, numpc=0, var_dim=1, normalise=True):
 
     if numpc > 0:
         if numpc > evecs.shape[1]:
-            import warnings
             warnings.warn("The number of PC wanted exceeds the number of "+\
                           "observations. All PCs are returned.")
             numpc = evecs.shape[1]
