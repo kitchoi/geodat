@@ -58,7 +58,7 @@ Computing time average
 
 
 Contents
-=======
+==========
 .. toctree::
    :maxdepth: 3
    

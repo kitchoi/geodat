@@ -102,7 +102,6 @@ html_theme_options = {
     "github_user": "kitchoi",
     "github_repo": "geodat",
     "github_banner": True,
-    "analytics_id": "52705131"
 }
 
 # Add any paths that contain custom themes here, relative to this directory.

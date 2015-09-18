@@ -499,7 +499,7 @@ class Variable(object):
         elif parent is not None:
             # Copy instance
             try:
-                self.__copy_from_parent__(parent)
+                self._copy_from_parent_(parent)
             except AttributeError:
                 raise AttributeError("Type of parent is :"+str(type(parent))+\
                                      ". Expect geodat.nc.Variable")
@@ -672,7 +672,7 @@ class Variable(object):
 
         return domain
 
-    def __copy_from_parent__(self, parent):
+    def _copy_from_parent_(self, parent):
         """ Copy the dimensions, attributes and varname
         from a parent variable
         Use copy.copy instead of deepcopy
@@ -681,7 +681,7 @@ class Variable(object):
         self.attributes = copy.copy(parent.attributes)
         self.varname = copy.copy(parent.varname)
 
-    def __broadcast_dim__(self, other, result):
+    def _broadcast_dim_(self, other, result):
         ''' Return a list of dimensions suitable for operations (__add__...)
         between self and other
 
@@ -721,7 +721,7 @@ class Variable(object):
         name2 = getattr(other, 'varname', str(other))
         data = var1 - var2
         history = name1 + '-' + name2
-        return Variable(data=data, dims=self.__broadcast_dim__(other, data),
+        return Variable(data=data, dims=self._broadcast_dim_(other, data),
                         parent=self, history=history)
 
     def __add__(self, other):
@@ -732,7 +732,7 @@ class Variable(object):
         name2 = getattr(other, 'varname', str(other))
         data = var1 + var2
         history = name1 + '+' + name2
-        return Variable(data=data, dims=self.__broadcast_dim__(other, data),
+        return Variable(data=data, dims=self._broadcast_dim_(other, data),
                         parent=self, history=history)
 
     def __div__(self, other):
@@ -743,7 +743,7 @@ class Variable(object):
         name2 = getattr(other, 'varname', str(other))
         data = var1 / var2
         history = name1 + '/' + name2
-        return Variable(data=data, dims=self.__broadcast_dim__(other, data),
+        return Variable(data=data, dims=self._broadcast_dim_(other, data),
                         parent=self, history=history)
 
     def __mul__(self, other):
@@ -755,14 +755,14 @@ class Variable(object):
         data = var1 * var2
         history = name1 + '*' + name2
         return Variable(data=data,
-                        dims=self.__broadcast_dim__(other, data),
+                        dims=self._broadcast_dim_(other, data),
                         parent=self, history=history)
 
 
     def __getitem__(self, sliceobj):
         a = Variable(data=self.data, varname=self.varname, parent=self)
         sliceobj = numpy.index_exp[sliceobj]
-        a.__slicing__(sliceobj)
+        a._slicing_(sliceobj)
         a.addHistory('__getitem__['+str(sliceobj)+']')
         return a
 
@@ -785,7 +785,7 @@ class Variable(object):
         '''
         region = _general_region(kwargs)
         if len(region) > 0:
-            return self.__createSlice__(region)
+            return self._create_slice_(region)
         else:
             return None
 
@@ -795,7 +795,7 @@ class Variable(object):
         '''
         region = _general_region(kwargs)
         if len(region) > 0:
-            self.__slicing__(self.__createSlice__(region))
+            self._slicing_(self._create_slice_(region))
             self.addHistory('setRegion('+str(region)+')')
         return self
 
@@ -807,7 +807,7 @@ class Variable(object):
         self[sl] = value
         return self
 
-    def __createSlice__(self, region=None):
+    def _create_slice_(self, region=None):
         ''' Generate a tuple of slice object for the given region
         specifications
         '''
@@ -843,7 +843,7 @@ class Variable(object):
         return sliceobj
 
 
-    def __slicing__(self, sliceobj):
+    def _slicing_(self, sliceobj):
         ''' Perform the slicing operation on both the data and axes
         '''
         self.data = self.data[sliceobj]
