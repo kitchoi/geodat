@@ -2152,11 +2152,6 @@ def plot_vs_axis(var, axis, *args, **kwargs):
     return line
 
 
-def change_ticklabel_to_timestamp(ticks,dim,fmt="%Y-%m-%d"):
-    
-    return None
-
-
 def UseMapplot(f_pylab):
     """ A decorator for using mapplot functions on an geodat.nc.Variable object
     f_pylab is the pylab function for map plotting (e.g. contour, contourf,...)
