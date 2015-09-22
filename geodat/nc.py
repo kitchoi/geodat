@@ -659,6 +659,21 @@ class Variable(object):
         ''' Return the domain of the variable
 
         If the axis is a longitude axis, make all negative degree positive
+        (only for output; the variable longitude data is unchanged)
+
+        Args:
+            axis (str or int): query the domain of a particular dimension.  If
+               it is not specified, the domains of all dimensions are returned
+
+        Returns:
+            dict
+
+        Examples:
+            >>> # var is a regional variable within (20S-20N, 140E-140W)
+            >>> var.getDomain()
+            {"X": (140.,220.), "Y": (-20.,20.)}
+            >>> var.getDomain("X")
+            {"X": (140.,220.)}
         '''
         if axis is None:
             axis = self.getCAxes()
@@ -774,6 +789,21 @@ class Variable(object):
 
     def getRegion(self, **kwargs):
         ''' Return a new Variable object within the region specified.
+
+        Keys "time","t","TIME","T" are all considered as "T" for time axis.
+
+        Keys "x","X","lon","LON","longitude","LONGITUDE" are all considered as
+           "X" for the longitude axis or an axis with an attribute of
+           "cartesian_axis" set to "X"
+
+        Keys "y","Y","lat","LAT","latitude","LATITUDE" are all considered as "Y"
+            for latitude axis or an axis with an attribute of "cartesian_axis"
+            set to "Y"
+
+        Examples:
+            >>> # Extracts the region where -20. <= latitude <= 20.
+            >>> # and 100. <= longitude <= 200.
+            >>> var.getRegion(lat=(-20.,20.),lon=(100.,200.))
         '''
         a = Variable(data=self.data, parent=self)
         a.setRegion(**kwargs)
@@ -2122,12 +2152,33 @@ def plot_vs_axis(var, axis, *args, **kwargs):
     return line
 
 
-def UseMapplot(f_map, f_pylab):
+def change_ticklabel_to_timestamp(ticks,dim,fmt="%Y-%m-%d"):
+    
+    return None
+
+
+def UseMapplot(f_pylab):
     """ A decorator for using mapplot functions on an geodat.nc.Variable object
-    f_map is a functino for making lat-lon plot
-    f_pylab is the pylab genuine function
+    f_pylab is the pylab function for map plotting (e.g. contour, contourf,...)
     """
     def plot_func(variable, *args, **kwargs):
+        ''' Use mpl_toolkits.basemap.Basemap to plot
+
+        Args:
+            variable (geodat.nc.Variable): should be 2D (singlet dimension will
+                be removed localling in this function)
+            basemap_kwargs (dict): optional.  If provided, it is parsed to 
+                mpl_toolkits.basemap.Basemap while setting up the map
+
+        Other arguments and keyword arguments are parsed to f_pylab (the pylab
+        function f_pylab provided).
+        
+        Returns:
+           m, cs (mpl_toolkits.basemap.Basemap, output of f_pylab)
+        
+        If the dimensions are not recognized as latitudes and longitudes, no map
+        is made; f_pylab(x,y,data) is called and its output(s) are returned
+        '''
         # args needed for quiver
         args = list(args)
         for i in range(len(args)):
@@ -2148,7 +2199,8 @@ def UseMapplot(f_map, f_pylab):
             # Lat-Lon plot
             lons = variable.getLongitude()
             lats = variable.getLatitude()
-            m, cs = f_map(lons, lats, data, basemap_kwargs, *args, **kwargs)
+            m, cs = geodat.plot.mapplot.MapSetup(f_pylab)(
+                lons, lats, data, basemap_kwargs, *args, **kwargs)
             return m, cs
         elif caxes[-1] == 'Z':
             # Z axis is prefered as the vertical axis
@@ -2163,10 +2215,10 @@ def UseMapplot(f_map, f_pylab):
         return f_pylab(x, y, data, *args, **kwargs)
     return plot_func
 
-contour = UseMapplot(geodat.plot.mapplot.contour, pylab.contour)
-contourf = UseMapplot(geodat.plot.mapplot.contourf, pylab.contourf)
-quiver = UseMapplot(geodat.plot.mapplot.quiver, pylab.quiver)
-pcolor = UseMapplot(geodat.plot.mapplot.pcolor, pylab.pcolor)
+contour = UseMapplot(pylab.contour)
+contourf = UseMapplot(pylab.contourf)
+quiver = UseMapplot(pylab.quiver)
+pcolor = UseMapplot(pylab.pcolor)
 
 
 def spatial_corr(var1, var2):

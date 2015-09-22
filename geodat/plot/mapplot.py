@@ -8,14 +8,15 @@ def MapSetup(f):
         Input:
             field       - either a numpy array or a util.nc.Variable
                           if field is a numpy.array, arguments "lat" and "lon" will be needed.
-            lat         - numpy.array for the latitude (assumed to be in degree)
-            lon         - numpy.array for the longitude (assumed to be in degree, and is monotonic)
+            lats         - numpy.array for the latitude (assumed to be in degree)
+            lons         - numpy.array for the longitude (assumed to be in degree, and is monotonic)
             lon_0       - center of the map, default = 180.
             projection  - projection option for Basemap, default = 'cyl'
             draw_lon    - draw meridians (default=True)
             draw_lat    - draw parallels (default=True)
             parallels   - arrays for the parallels (if undefined, it will be automatically determined)
             meridians   - arrays for the meridians (if undefined, it will be automatically determined)
+            basemap_kwargs (dict): parsed to Basemap while setting up the map
         Examples:
             this_function(lons,lats,numpy.array,...)
         '''
@@ -52,7 +53,4 @@ def MapSetup(f):
         return m,cs
     return plot
 
-contourf = MapSetup(Basemap.contourf)
 contour = MapSetup(Basemap.contour)
-quiver = MapSetup(Basemap.quiver)
-pcolor = MapSetup(Basemap.pcolor)
