@@ -4,15 +4,23 @@ import numpy
 import geodat.keepdims as keepdims
 import scipy.stats
 
-def regress(y, x, axis=0, reverse=False, return_corr=False):
-    """regress(y,x,axis=0)
-       where x is 1D of shape (M,), y is (...,M,...)
-             axis specifies where M is in y
 
-       Return: slope, intercept, p, corr
-       reverse - if False (default) then y = slope*x + intercept
-                 if True            then x = slope*y + intercept
+def regress(y, x, axis=0, reverse=False):
+    """ Regress y with x (or x with y if reverse is True) where x is an 1D array
 
+    where x is 1D of shape (M,), y is (...,M,...)
+    axis specifies where M is in y
+
+    Args:
+       y (numpy array)
+       x (numpy array)
+       axis (int)
+       reverse (bool): if False (default), then y = slope*x + intercept
+                       if True, then x = slope*y + intercept
+    Returns:
+       slope, intercept, p, corr
+
+    where p is the p-value of the correlation.  corr is the correlation coefficient
     """
     if x.squeeze().ndim != 1:
         raise Exception("x is supposed to be 1D")
@@ -21,10 +29,13 @@ def regress(y, x, axis=0, reverse=False, return_corr=False):
     if y.shape[axis] != len(x):
         raise Exception("The {}-th axis of y(={}) should match the length"+\
                         "of x(={})".format(axis, y.shape[axis], len(x)))
+
+    # Slice object for making x shape broadcast-able to y
     xtoy = (numpy.newaxis,)*axis + (slice(None),) + \
            (numpy.newaxis,)*(y.ndim-axis-1)
 
     if reverse:
+        # x regressed with y
         x_dev = x[xtoy] - x.mean()
         y_dev = y-keepdims.mean(y, axis)
         slope = keepdims.sum(x_dev*y_dev, axis)/\
@@ -34,7 +45,7 @@ def regress(y, x, axis=0, reverse=False, return_corr=False):
         slope = slope.squeeze()
         intercept = intercept.squeeze()
     else:
-        # original interpretation
+        # y regressed with x
         x_dev = x[xtoy]-x.mean()
         y_dev = y-keepdims.mean(y, axis)
         slope = keepdims.sum((x_dev*y_dev), axis)/\
@@ -46,7 +57,6 @@ def regress(y, x, axis=0, reverse=False, return_corr=False):
 
     def compute_sqrt_x2(x, axis=None):
         return numpy.ma.sqrt(keepdims.sum(numpy.power(x-x.mean(), 2), axis))
-
 
     def compute_nd(y, axis=None):
         if axis is None:
@@ -60,27 +70,26 @@ def regress(y, x, axis=0, reverse=False, return_corr=False):
                 nd = (~y.mask).sum(axis=axis)
         return nd
 
-    if not return_corr:
-        return slope, intercept
+    sqrt_y2 = compute_sqrt_x2(y, axis=axis)
+    sqrt_x2 = compute_sqrt_x2(x)
+    if reverse:
+        corr = (slope*sqrt_y2/sqrt_x2).squeeze()
     else:
-        sqrt_y2 = compute_sqrt_x2(y, axis=axis)
-        sqrt_x2 = compute_sqrt_x2(x)
-        if reverse:
-            corr = (slope*sqrt_y2/sqrt_x2).squeeze()
-        else:
-            corr = (slope*sqrt_x2/sqrt_y2).squeeze()
+        corr = (slope*sqrt_x2/sqrt_y2).squeeze()
 
-        # calculate degree of freedom
-        if isinstance(x, numpy.ma.core.MaskedArray):
-            if x.mask.any():
-                nd = compute_nd(x[xtoy]*y, axis=axis)
-            else:
-                nd = compute_nd(y, axis=axis)
+    # calculate degree of freedom
+    if isinstance(x, numpy.ma.core.MaskedArray):
+        if x.mask.any():
+            nd = compute_nd(x[xtoy]*y, axis=axis)
         else:
             nd = compute_nd(y, axis=axis)
-        ts = numpy.abs(corr)/numpy.ma.sqrt((1-corr*corr)/(nd-2))
-        p = 1 - scipy.stats.t.sf(ts, nd)
-        return slope, intercept, p, corr
+    else:
+        nd = compute_nd(y, axis=axis)
+
+    # t-test
+    ts = numpy.abs(corr)/numpy.ma.sqrt((1-corr*corr)/(nd-2))
+    p = 1 - scipy.stats.t.sf(ts, nd)
+    return slope, intercept, p, corr
 
 
 def regress_xND(y, x, axis_x=0):
