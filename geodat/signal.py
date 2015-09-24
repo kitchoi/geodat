@@ -117,7 +117,7 @@ def detrend(y, x, axis=0):
     Make use of regress(y,x,axis)
     Return ydtd = y - slope*x[xtoy] - intercept
     """
-    slope, intercept = regress(y, x, axis)
+    slope, intercept, p, corr = regress(y, x, axis)
     xtoy = (numpy.newaxis,)*axis + (slice(None),) + \
            (numpy.newaxis,)*(y.ndim-axis-1)
     ydtd = y - slope*x[xtoy] - intercept
