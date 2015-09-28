@@ -12,6 +12,7 @@ addons:
     - gfortran
     - libnetcdf-dev
     - libhdf5-dev
+    - libgeos-dev
 
 install:
   - pip install --allow-external basemap --allow-unverified basemap basemap
