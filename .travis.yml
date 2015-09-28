@@ -13,8 +13,7 @@ addons:
     - gfortran
 
 install:
-  - "pip install -r requirements.txt"
-  - "pip install -q basemap --allow-external basemap --allow-unverified basemap"
+  - python setup.py install
 
 script:
   - python setup.py test
