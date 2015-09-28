@@ -1,5 +1,5 @@
 import numpy
-import geodat.keepdims as keepdims
+from . import keepdims
 
 def integrate(data, axes=None, iax=None, **kwargs):
     ''' Integrate data along a selected set of axes

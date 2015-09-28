@@ -24,16 +24,16 @@ from netCDF4 import Dataset as _netCDF4_Dataset
 
 from dateutil.relativedelta import relativedelta
 
-import geodat.keepdims as keepdims
-import geodat.arrays
-import geodat.stat
-import geodat.math
-import geodat.monthly
-import geodat.plot.mapplot
-import geodat.pyferret_func
-import geodat.units
+from . import keepdims
+from . import arrays
+from . import stat
+from . import math
+from . import monthly
+from .plot import mapplot
+from . import pyferret_func
+from . import units
+from . import grid_func
 
-import sphere_grid.grid_func
 
 def getvar(filename, varname, *args, **kwargs):
     ''' Short hand for retrieving variable from a netcdf file
@@ -243,7 +243,7 @@ class Dimension(object):
         cax = atts.get('axis', atts.get('cartesian_axis', None))
         if cax is None:
             if self.units is not None:
-                cax = geodat.units.assign_caxis(self.units)
+                cax = units.assign_caxis(self.units)
         return cax
 
 
@@ -845,7 +845,7 @@ class Variable(object):
 
         sliceobj = ()
         # general selector method that returns a slice object
-        selector = geodat.arrays.getSlice
+        selector = arrays.getSlice
         axes = self.getAxes()
         cartesian_axes = self.getCAxes()
         assert len(axes) == len(cartesian_axes) == self.data.ndim
@@ -1009,7 +1009,7 @@ class Variable(object):
                     It has to be an integer.''')
         if N % 2 != 1:
             N = N + 1
-        return Variable(data=geodat.stat.runave(self.data, N, axis, step),
+        return Variable(data=stat.runave(self.data, N, axis, step),
                         parent=self, history=history)
 
     def squeeze(self):
@@ -1048,7 +1048,7 @@ def _getdata(other):
 
     Used by __sub__,__add__,...
     '''
-    if isinstance(other, geodat.nc.Variable):
+    if isinstance(other, Variable):
         other.ensureMasked()
         return other.data
     else:
@@ -1060,7 +1060,7 @@ def apply_mask(var, mask):
     example: apply_mask(v,land_mask>0.)
     The data of var is copied to a new variable that is being returned
     '''
-    newvar = geodat.nc.Variable(data=var.data.copy(), parent=var)
+    newvar = Variable(data=var.data.copy(), parent=var)
     newvar.ensureMasked()
     newvar.data[..., mask] = numpy.ma.masked
     return newvar
@@ -1102,7 +1102,7 @@ def ave(var, axis=None):
     if has_Y:
         sliceobj = [numpy.newaxis if cax != 'Y' else slice(None)
                     for cax in cartesian_axes]
-        weights = geodat.stat.lat_weights(var.getLatitude())[sliceobj]
+        weights = stat.lat_weights(var.getLatitude())[sliceobj]
 
     data = data*weights
     data = keepdims.mean(data, axis=axis)/keepdims.mean(weights, axis=axis)
@@ -1159,7 +1159,7 @@ def wgt_ave(var, axis=None):
     if has_XY:
         sliceobj = [numpy.newaxis if cax != 'Y' else slice(None)
                     for cax in cartesian_axes]
-        lat_weights = geodat.stat.lat_weights(var.getLatitude())[sliceobj]
+        lat_weights = stat.lat_weights(var.getLatitude())[sliceobj]
     else:
         lat_weights = 1.
 
@@ -1224,7 +1224,7 @@ def wgt_sum(var, axis=None):
     if has_Y:
         sliceobj = [numpy.newaxis if cax != 'Y' else slice(None)
                     for cax in cartesian_axes]
-        weights = geodat.stat.lat_weights(var.getLatitude())[sliceobj]
+        weights = stat.lat_weights(var.getLatitude())[sliceobj]
 
     data = data*weights
     data = keepdims.sum(data, axis=axis)
@@ -1264,8 +1264,8 @@ def time_array_to_dim(time_array, calendar, units, **kwargs):
             calendar=calendar, units=units),
         calendar=calendar, units=units)
                          for time in time_array])
-    return geodat.nc.Dimension(data=times, units=units,
-                               attributes={'calendar':calendar}, **kwargs)
+    return Dimension(data=times, units=units,
+                     attributes={'calendar':calendar}, **kwargs)
 
 
 def create_monthly(calendar, units, time0, time_end=None):
@@ -1378,7 +1378,7 @@ def climatology(var, appendname=False,
     months = var.getDate('m', no_continuous_duplicate_month)
     axis = var.getCAxes().index('T')
 
-    clim_data = geodat.monthly.climatology(data=data, months=months, axis=axis,
+    clim_data = monthly.climatology(data=data, months=months, axis=axis,
                                            *args, **kwargs)
     history = 'climatology'
     long_name = var.getattr('long_name', '')
@@ -1404,10 +1404,10 @@ def anomaly(var, appendname=False, clim=None,
     months = var.getDate('m', no_continuous_duplicate_month)
     axis = var.getCAxes().index('T')
     if clim is None:
-        anom_data = geodat.monthly.anomaly(data=data,
+        anom_data = monthly.anomaly(data=data,
                                            months=months, axis=axis)[0]
     else:
-        anom_data = geodat.monthly.anomaly(data=data, months=months,
+        anom_data = monthly.anomaly(data=data, months=months,
                                            axis=axis, clim=clim.data)[0]
     history = 'anomaly'
     long_name = var.getattr('long_name', '')
@@ -1461,13 +1461,13 @@ def clim2long(clim, target):
                if idim == time_idim
                else dim
                for idim, dim in enumerate(clim.dims)]
-    return geodat.nc.Variable(data=geodat.monthly.clim2long(
+    return Variable(data=monthly.clim2long(
         clim.data, 0, target.getDate("m", True)),
-                              dims=new_dim,
-                              attributes=clim.attributes,
-                              history="geodat.nc.clim2long({},{})".\
-                              format(clim.varname, target.varname),
-                              varname=clim.varname)
+                    dims=new_dim,
+                    attributes=clim.attributes,
+                    history="geodat.nc.clim2long({},{})".\
+                    format(clim.varname, target.varname),
+                    varname=clim.varname)
 
 
 def concatenate(variables, axis=0):
@@ -1542,7 +1542,7 @@ def div(u, v, varname='div', long_name='divergence', **kwargs):
     dx = dx[dx_slice]
     dy = numpy.diff(lat)[0] * R
 
-    return Variable(data=geodat.math.div(u.data, v.data, dx, dy, xaxis, yaxis),
+    return Variable(data=math.div(u.data, v.data, dx, dy, xaxis, yaxis),
                     varname=varname, parent=u, history='divergence',
                     attributes=dict(long_name=long_name), **kwargs)
 
@@ -1580,7 +1580,7 @@ def gradient(var, axis, mask_boundary=True, **kwargs):
         else:
             dx = numpy.gradient(var.getAxes()[axis])
 
-    return Variable(data=geodat.math.gradient(var.data, dx, axis,
+    return Variable(data=math.gradient(var.data, dx, axis,
                                               mask_boundary=mask_boundary),
                     parent=var,
                     history='gradient: '+var.getCAxes()[axis], **kwargs)
@@ -1600,7 +1600,7 @@ def integrate(var, axis, varname='int', versatile=False):
         axis = [axis]
 
     # Compute integration
-    re_data = geodat.math.integrate(data=var.data, axes=var.getAxes(), iax=axis)
+    re_data = math.integrate(data=var.data, axes=var.getAxes(), iax=axis)
 
     # History attribute
     history = 'Integrated along axis:'+ \
@@ -1719,10 +1719,10 @@ def fer2var(var):
     Returns:
         geodat.nc.Variable
     '''
-    if not pyferret_func.PYFERRET_INSTALLED:
+    if not pyferret_func._PYFERRET_INSTALLED:
         raise ImportError("No pyferret installed")
 
-    result = geodat.pyferret_func.fer2num(var)
+    result = pyferret_func.fer2num(var)
     dims = [Dimension(data=result['coords'][i],
                       units=result['dimunits'][i],
                       dimname=result['dimnames'][i])
@@ -1745,7 +1745,7 @@ def var2fer(var, name=None):
     Returns:
         dict: to be used by pyferret.putdata
     '''
-    if not pyferret_func.PYFERRET_INSTALLED:
+    if not pyferret_func._PYFERRET_INSTALLED:
         raise ImportError("No pyferret installed")
 
     num_input = _var_to_num_input(var)
@@ -1753,7 +1753,7 @@ def var2fer(var, name=None):
         assert isinstance(name,str)
         num_input["varname"] = name
 
-    return geodat.pyferret_func.num2fer(num_input)
+    return pyferret_func.num2fer(num_input)
 
 
 def _var_to_num_input(var):
@@ -1797,7 +1797,7 @@ def pyferret_regrid(var, ref_var=None, axis='XY', nlon=None, nlat=None,
 
     .. _Ferret doc: http://ferret.pmel.noaa.gov/Ferret/documentation/users-guide
     '''
-    if not pyferret_func.PYFERRET_INSTALLED:
+    if not pyferret_func._PYFERRET_INSTALLED:
         raise ImportError("No pyferret installed")
 
     if ref_var is None:
@@ -1810,7 +1810,7 @@ def pyferret_regrid(var, ref_var=None, axis='XY', nlon=None, nlat=None,
             regridding in the XY direction.
             The axis/axes you chose:'''+str(axis))
         # Create latitude and longitude using the sphere_grid and spharm modules
-        lon, lat = sphere_grid.grid_func.grid_degree(NY=nlat, NX=nlon)
+        lon, lat = grid_func.grid_degree(NY=nlat, NX=nlon)
         lon = Dimension(data=lon, units="degrees_E", dimname="lon")
         lat = Dimension(data=lat, units="degrees_N", dimname="lat")
         # Create new dimensions
@@ -1836,7 +1836,7 @@ def pyferret_regrid(var, ref_var=None, axis='XY', nlon=None, nlat=None,
     ref_var_slice = tuple([slice(0, 1) if cax not in axis.upper()
                            else slice(None)
                            for cax in ref_var.getCAxes()])
-    return geodat.pyferret_func.regrid_primitive(
+    return pyferret_func.regrid_primitive(
         _var_to_num_input(var),
         _var_to_num_input(ref_var[ref_var_slice].squeeze()),
         axis, verbose=verbose, prerun=prerun, transform=transform)
@@ -1867,20 +1867,20 @@ def regrid(var, nlon, nlat, verbose=False):
         newaxorder = [ilat, ilon, otherdim]
         # transformed data
         trans_data = numpy.transpose(var.data, newaxorder)
-        result = sphere_grid.grid_func.regrid(var.getLongitude(),
-                                              var.getLatitude(),
-                                              trans_data, nlon, nlat)
+        result = grid_func.regrid(var.getLongitude(),
+                                  var.getLatitude(),
+                                  trans_data, nlon, nlat)
         # transform back
         newaxorder = sorted(range(var.data.ndim), key=lambda x: newaxorder[x])
         regridded = numpy.transpose(result, newaxorder)
     elif var.data.ndim > 3:
         raise Exception('Right now the regrid function only take 2D or 3D data')
     else:
-        regridded = sphere_grid.grid_func.regrid(var.getLongitude(),
-                                                 var.getLatitude(),
-                                                 var.data, nlon, nlat)
+        regridded = grid_func.regrid(var.getLongitude(),
+                                     var.getLatitude(),
+                                     var.data, nlon, nlat)
 
-    newlon, newlat = sphere_grid.grid_func.grid_degree(nlat, nlon)
+    newlon, newlat = grid_func.grid_degree(nlat, nlon)
     lon_d = Dimension(data=newlon, units=var.dims[ilon].units, dimname='lon')
     lat_d = Dimension(data=newlat, units=var.dims[ilat].units, dimname='lat')
     dims = []
@@ -2193,7 +2193,7 @@ def UseMapplot(f_pylab):
             # Lat-Lon plot
             lons = variable.getLongitude()
             lats = variable.getLatitude()
-            m, cs = geodat.plot.mapplot.MapSetup(f_pylab)(
+            m, cs = mapplot.MapSetup(f_pylab)(
                 lons, lats, data, basemap_kwargs, *args, **kwargs)
             return m, cs
         elif caxes[-1] == 'Z':
@@ -2220,10 +2220,10 @@ def spatial_corr(var1, var2):
 
 
 def regress(var1, var2):
-    return geodat.nc.Variable(data=geodat.signal.regress(var1.data,
-                                                         var2.data)[0],
-                              dims=var1.dims[1:],
-                              varname="{}_{}".format(var1.varname,
-                                                     var2.varname),
-                              history="{} regress to {}".format(var1.varname,
-                                                                var2.varname))
+    return Variable(data=geodat.signal.regress(var1.data,
+                                               var2.data)[0],
+                    dims=var1.dims[1:],
+                    varname="{}_{}".format(var1.varname,
+                                           var2.varname),
+                    history="{} regress to {}".format(var1.varname,
+                                                      var2.varname))

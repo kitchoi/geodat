@@ -1,6 +1,7 @@
 import numpy
 from scipy.interpolate import interp1d
-import geodat.parallelprocessing as parallelprocessing
+
+from .parallelprocessing import run_in_parallel, extract_output
 
 def getSlice(axis, lower, upper, modulo=None):
     '''Given a numpy array, return a slice that extracts the entries
@@ -119,12 +120,11 @@ def apply_along_axis(func, axis, arr, chunk_size=10000, do_parallel=True,
         new_arr = new_arr.reshape(-1, new_arr.shape[-1])
     if new_arr.shape[0] > chunk_size and do_parallel:
         # Call apply_along_axis multiple time using multiprocessing
-        parallel_fun = parallelprocessing.run_in_parallel(apply_along_axis)
+        parallel_fun = run_in_parallel(apply_along_axis)
         for arr_slice in getSlice_chunk(new_arr, istep=chunk_size):
             ps, queue_output = parallel_fun(func, 1, new_arr[arr_slice],
                                             *args, do_parallel=False, **kwargs)
-        result = numpy.vstack(
-            parallelprocessing.extract_output(ps, queue_output))
+        result = numpy.vstack(extract_output(ps, queue_output))
         queue_output.close()
     else:
         # Get the first result to find how long the reduced axis should be

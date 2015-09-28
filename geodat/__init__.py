@@ -1,2 +1,1 @@
-import signal
-import nc
+__all__ = ["signal","nc"]
