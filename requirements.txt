@@ -3,4 +3,4 @@ numpy
 six
 scipy
 python-dateutil
-pyspharm
+
