@@ -728,8 +728,8 @@ class Variable(object):
         return dims
 
     def __sub__(self, other):
-        var1 = __getdata__(self)
-        var2 = __getdata__(other)
+        var1 = _getdata(self)
+        var2 = _getdata(other)
         history = ""
         name1 = getattr(self, 'varname', str(self))
         name2 = getattr(other, 'varname', str(other))
@@ -739,8 +739,8 @@ class Variable(object):
                         parent=self, history=history)
 
     def __add__(self, other):
-        var1 = __getdata__(self)
-        var2 = __getdata__(other)
+        var1 = _getdata(self)
+        var2 = _getdata(other)
         history = ""
         name1 = getattr(self, 'varname', str(self))
         name2 = getattr(other, 'varname', str(other))
@@ -750,8 +750,8 @@ class Variable(object):
                         parent=self, history=history)
 
     def __div__(self, other):
-        var1 = __getdata__(self)
-        var2 = __getdata__(other)
+        var1 = _getdata(self)
+        var2 = _getdata(other)
         history = ""
         name1 = getattr(self, 'varname', str(self))
         name2 = getattr(other, 'varname', str(other))
@@ -761,8 +761,8 @@ class Variable(object):
                         parent=self, history=history)
 
     def __mul__(self, other):
-        var1 = __getdata__(self)
-        var2 = __getdata__(other)
+        var1 = _getdata(self)
+        var2 = _getdata(other)
         history = ""
         name1 = getattr(self, 'varname', str(self))
         name2 = getattr(other, 'varname', str(other))
@@ -1040,7 +1040,7 @@ class Variable(object):
             toggle, no_continuous_duplicate_month)
 
 
-def __getdata__(other):
+def _getdata(other):
     '''
     If the input is a geodat.nc.Variable, run the ensureMasked function
     and return the `data attribute
