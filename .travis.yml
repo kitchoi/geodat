@@ -3,10 +3,17 @@ python:
   - "2.6"
   - "2.7_with_system_site_packages"
 
+sudo: false
+
+addons:
+  apt:
+    packages:
+    - liblapack-dev
+    - libblas-dev
+    - gfortran
+
 install:
-  - sudo apt-get install liblapack-dev libblas-dev gfortran
   - "pip install -r requirements.txt"
 
 script:
   - python setup.py test
-
