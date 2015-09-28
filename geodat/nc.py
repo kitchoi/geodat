@@ -18,9 +18,7 @@ import numpy
 import scipy.io.netcdf as netcdf
 from scipy.ndimage.filters import gaussian_filter
 import pylab
-from netCDF4 import num2date as _num2date
-from netCDF4 import date2num as _date2num
-from netCDF4 import Dataset as _netCDF4_Dataset
+
 
 from dateutil.relativedelta import relativedelta
 
@@ -34,6 +32,38 @@ from . import pyferret_func
 from . import units
 from . import grid_func
 
+
+#-----------------------------------------------------------------
+# If netCDF4 is not installed, some functions are not available
+# When these functions are called, an Exception will be raised
+#-----------------------------------------------------------------
+try:
+    import netCDF4 as _netCDF4
+    _NETCDF4_IMPORTED = True
+except ImportError:
+    _NETCDF4_IMPORTED = False
+
+
+def _throw_error(error):
+    def new_func(*args,**kwargs):
+        raise error
+    return new_func
+
+
+if _NETCDF4_IMPORTED:
+    _num2date = _netCDF4.num2date
+    _date2num = _netCDF4.date2num
+    _netCDF4_Dataset = _netCDF4.Dataset
+else:
+    _NETCDF4_IMPORT_ERROR = ImportError("The netCDF4 package is "+\
+                                        "required but fail to import")
+    _num2date = _date2num = _netCDF4_Dataset = \
+                _throw_error(_NETCDF4_IMPORT_ERROR)
+
+
+#---------------------------------
+# Finished import setup
+#---------------------------------
 
 def getvar(filename, varname, *args, **kwargs):
     ''' Short hand for retrieving variable from a netcdf file
