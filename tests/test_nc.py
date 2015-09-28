@@ -8,22 +8,21 @@ import geodat.nc
 
 def var_dummy(ntime,nlat,nlon):
     time_dim = geodat.nc.Dimension(data=numpy.arange(ntime,dtype=numpy.float),
-                                 units="months since 0001-01-01",
-                                 dimname="time",
-                                 attributes={"calendar":"julian"})
+                                   units="months since 0001-01-01",
+                                   dimname="time",
+                                   attributes={"calendar":"julian"})
     lon_dim = geodat.nc.Dimension(data=numpy.linspace(0.,360.,nlon,
                                                       endpoint=False),
                                   units="degreeE",
                                   dimname="lon")
     lat_dim = geodat.nc.Dimension(data=numpy.linspace(-90.,90.,nlat),
-                                units="degreeN",
-                                dimname="lat")
+                                  units="degreeN",
+                                  dimname="lat")
     
     return geodat.nc.Variable(data=numpy.arange(float(ntime*nlat*nlon)).\
                               reshape(ntime,nlat,nlon),
                               dims=[time_dim,lat_dim,lon_dim],
                               varname="temp")
-
 
 
 def skipUnlessSpharmExists():
@@ -60,6 +59,9 @@ class NCVariableTestCase(unittest.TestCase):
         self.assertAlmostEqual(float(self.var.wgt_ave().data),
                                17999.5,1)
     
+    def test_timeave(self):
+        self.assertEqual(self.var[...,:3,:4].time_ave().data.shape,(1,3,4))
+
     def test_add_scalar(self):
         self.assertTrue(numpy.allclose((self.var + 2).data,
                                        self.var.data + 2))
@@ -103,6 +105,3 @@ class NCVariableTestCase(unittest.TestCase):
 
 if __name__== "__main__":
     unittest.main(verbosity=2)
-else:
-    suite = unittest.TestLoader().loadTestsFromTestCase(NCVariableTestCase)
-    unittest.TextTestRunner(verbosity=2).run(suite)
