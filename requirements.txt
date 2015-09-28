@@ -1,5 +1,4 @@
 matplotlib
-basemap
 numpy
 six
 scipy

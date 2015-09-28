@@ -9,5 +9,6 @@ setup(name='Geodat',
       author_email='kit@kychoi.org',
       url='http://kychoi.org/geodat_doc/',
       packages=["geodat","geodat.plot"],
+      install_requires = ["numpy","scipy","matplotlib","basemap"],
       test_suite = "tests.get_tests",
      )
