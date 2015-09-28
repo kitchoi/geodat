@@ -163,10 +163,8 @@ class Dimension(object):
         dimname (str): Name of the dimension, e.g. "time"
         units (str): Unit of the dimension, e.g. "days since 1990-01-01"
         attributes (dict): Attributes for the dimension
-        parent (Dimension): from which dimname,units,attributes are copied. If
-          parent is provided and dimname/units is specified, the latter is used.
-          If parent is provided and attributes is specified, the attributes
-          from the parent is copied and then updated by the attributes argument.
+        parent (Dimension): from which dimname,units,attributes are copied if
+             they are not supplied already in the arguments
     """
     def __init__(self, data, dimname=None, units=None,
                  attributes=None, parent=None):
@@ -196,6 +194,7 @@ class Dimension(object):
 
 
     def __getitem__(self, sliceobj):
+        ''' Apply the slice object on the data (numpy.ndarray) '''
         return Dimension(data=self.data[sliceobj],
                          dimname=self.dimname,
                          units=self.units,
