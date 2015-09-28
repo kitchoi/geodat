@@ -2,8 +2,6 @@ language: python
 python:
   - "2.7"
 
-sudo: false
-
 addons:
   apt:
     packages:
@@ -15,6 +13,8 @@ addons:
     - libgeos-dev
 
 install:
+  - sudo ln -s /usr/lib/libgeos-3.3.3.so /usr/lib/libgeos.so
+  - sudo ln -s /usr/lib/libgeos-3.3.3.so /usr/lib/libgeos.so.1
   - pip install --allow-external basemap --allow-unverified basemap basemap
   - pip install netCDF4
   - python setup.py install
