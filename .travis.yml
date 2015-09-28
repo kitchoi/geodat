@@ -2,9 +2,11 @@ language: python
 python:
   - "2.6_with_system_site_packages"
   - "2.7_with_system_site_packages"
-# command to install dependencies
-install: "pip install -r requirements.txt"
-# command to run tests
+
+install:
+  - sudo apt-get install liblapack-dev libblas-dev
+  - "pip install -r requirements.txt"
+
 script:
   - python setup.py test
 
