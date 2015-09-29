@@ -17,5 +17,5 @@ setup(name='Geodat',
       url='http://kychoi.org/geodat_doc/',
       packages=["geodat","geodat.plot"],
       install_requires = requires,
-      #test_suite = "tests.get_tests",
+      test_suite = "tests.get_tests",
      )

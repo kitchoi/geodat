@@ -24,6 +24,13 @@ def var_dummy(ntime,nlat,nlon):
                               dims=[time_dim,lat_dim,lon_dim],
                               varname="temp")
 
+def skipUnlessNetCDF4Exists():
+    try:
+        import netCDF4
+    except ImportError:
+        return unittest.skip("Cannot load netCDF4")
+    return lambda func: func
+
 
 def skipUnlessSpharmExists():
     try:
@@ -82,7 +89,8 @@ class NCVariableTestCase(unittest.TestCase):
         self.assertTrue(numpy.allclose((self.var.time_ave() + self.var).data,
                                        self.var.data.mean(axis=0) + \
                                        self.var.data))
-    
+
+    @skipUnlessNetCDF4Exists()
     def test_savefile(self):
         geodat.nc.savefile("test_nc_file.nc",self.var)
         tmp = geodat.nc.getvar("test_nc_file.nc","temp")
