@@ -8,16 +8,12 @@ addons:
     - liblapack-dev
     - libblas-dev
     - gfortran
-    - libnetcdf-dev
-    - libhdf5-dev
     - libgeos-dev
 
 install:
   - sudo ln -s /usr/lib/libgeos-3.2.2.so /usr/lib/libgeos.so
   - sudo ln -s /usr/lib/libgeos-3.3.8.so /usr/lib/libgeos.so.1
   - pip install --allow-external basemap --allow-unverified basemap basemap
-  - export HDF5_DIR=/usr/lib
-  - pip install netCDF4
   - python setup.py install
 
 script:
