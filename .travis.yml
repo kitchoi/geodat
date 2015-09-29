@@ -13,12 +13,8 @@ addons:
     - libgeos-dev
 
 install:
-  - ls /usr/lib/*geos*
-  - ls /usr/lib64/*geos*
-  - sudo ln -s /usr/lib/libgeos-3.3.3.so /usr/lib/libgeos.so
-  - sudo ln -s /usr/lib/libgeos-3.3.3.so /usr/lib/libgeos.so.1
-  - sudo ln -s /usr/lib64/libgeos-3.3.3.so /usr/lib64/libgeos.so
-  - sudo ln -s /usr/lib64/libgeos-3.3.3.so /usr/lib64/libgeos.so.1
+  - sudo ln -s /usr/lib/libgeos-3.2.2.so /usr/lib/libgeos.so
+  - sudo ln -s /usr/lib/libgeos-3.3.8.so /usr/lib/libgeos.so.1
   - pip install --allow-external basemap --allow-unverified basemap basemap
   - pip install netCDF4
   - python setup.py install
