@@ -68,6 +68,7 @@ class NCVariableTestCase(unittest.TestCase):
     def test_sliceVar(self):
         self.assertEqual(self.var[:2,:3,:4].data.shape,(2,3,4))
 
+    @skipUnlessNetCDF4Exists()
     def test_getDate_month(self):
         months_iter = itertools.cycle(range(1,13))
         months = numpy.array([ months_iter.next() 
