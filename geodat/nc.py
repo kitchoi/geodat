@@ -407,9 +407,15 @@ class Dimension(object):
         correct for the duplicates
 
         Examples:
-          getDate("m") will return an array of the month of the time axis
-          getDate("Ymd") will return an array with the first column showing the
-             years, second column showing the months, third column for days
+          >>> # return an array of the month of the time axis
+          >>> var.getDate("m")
+          array([ 1, 2, 3, 4, 5, 6 ])
+
+          >>> # return an array with the first column showing the years,
+          >>> # second column showing the months, third column
+          >>> # for days
+          >>> getDate("Ymd")
+          array([[ 1990, 1, 15 ], [ 1990, 2, 15 ], [ 1990, 3, 15 ]])
         '''
         #------------------
         # Sanity check
@@ -1213,9 +1219,16 @@ class Variable(object):
         correct for the duplicates
 
         Examples:
-          getDate("m") will return an array of the month of the time axis
-          getDate("Ymd") will return an array with the first column showing the
-             years, second column showing the months, third column for days
+          >>> # return an array of the month of the time axis
+          >>> var.getDate("m")
+          array([ 1, 2, 3, 4, 5, 6 ])
+
+          >>> # return an array with the first column showing the years,
+          >>> # second column showing the months, third column
+          >>> # for days
+          >>> getDate("Ymd")
+          array([[ 1990, 1, 15 ], [ 1990, 2, 15 ], [ 1990, 3, 15 ]])
+
         '''
         if 'T' not in self.getCAxes():
             raise Exception("There is no recognized time axis in Variable:"+\
