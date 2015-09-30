@@ -15,6 +15,10 @@ install:
   - sudo ln -s /usr/lib/libgeos-3.3.8.so /usr/lib/libgeos.so.1
   - pip install --allow-external basemap --allow-unverified basemap basemap
   - python setup.py install
+  - pip install coveralls
 
 script:
   - python setup.py test
+  - coverage run --source=geodat setup.py test
+
+after_success: coveralls
