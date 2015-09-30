@@ -10,7 +10,7 @@ import sys
 import copy
 import warnings
 import logging
-from functools import wraps
+from functools import wraps, partial
 import datetime
 import inspect
 
@@ -54,6 +54,7 @@ if _NETCDF4_IMPORTED:
     _num2date = _netCDF4.num2date
     _date2num = _netCDF4.date2num
     _netCDF4_Dataset = _netCDF4.Dataset
+    _netCDF4_datetime = _netCDF4.netcdftime.datetime
 else:
     _NETCDF4_IMPORT_ERROR = ImportError("The netCDF4 package is "+\
                                         "required but fail to import")
@@ -331,8 +332,10 @@ class Dimension(object):
         time point, and the six indices represent:
         YEAR,MONTH,DAY,HOUR,MINUTE,SECOND
         '''
-        if self.units.split()[0] != 'months' and \
-           self.units.split()[0] != 'month':
+        units = self.units.split()[0]
+        units = units if units.endswith("s") else units+"s"
+
+        if units != 'months':
             alltimes = _num2date(self.data, self.units,
                                  self.attributes.get(
                                      'calendar', 'standard').lower())
@@ -354,17 +357,14 @@ class Dimension(object):
                                 " axis, should have a unit such as "+\
                                 "\"days since 01-JAN-2000\"")
             if not self.is_monotonic():
-                raise Exception("The axis is not monotonic!")
+                raise ValueError("The axis is not monotonic!")
             if (numpy.diff(self.data) < 0.).all():
-                raise Exception('''Time going backward...really?
-                Haven't thought of how to take care of this''')
+                raise ValueError("Time going backward...really?")
 
-            t0 = self.time0()
-            unit = self.units.split()[0]
-            # this is redundant computation as the if-clause made sure the
-            # unit is "month"
-            units = unit if unit.endswith("s") else unit+"s"
-            alltimes = [t0 + relativedelta(**{units:t}) for t in self.data]
+            t0 = self.time0() # is a datetime.datetime object
+            # at this point we knew the unit is month
+            alltimes = [t0 + relativedelta(months=int(t))
+                        for t in self.data]
             time_list = [[t.year,
                           t.month,
                           t.day,
@@ -372,6 +372,7 @@ class Dimension(object):
                           t.minute,
                           t.second] for t in alltimes]
             return numpy.array(time_list)
+
 
     def time0(self):
         ''' Return a datetime.datetime object referring to the t0 of a time axis
@@ -392,58 +393,172 @@ class Dimension(object):
         return datetime.datetime.strptime(startpoint, date_format)
 
 
-    def getDate(self, toggle=None, no_continuous_duplicate_month=False):
+    def getDate(self, toggle="YmdHMS", no_continuous_duplicate_month=False):
         ''' Return the time axis date in an array format of
         "Year,Month,Day,Hour,Minute,Second"
-        Toggle one in Y/m/d/H/M/S to select a particular time format
-        e.g. getDate('m') will return an array of the month of the time axis
+        Toggle one or many among Y/m/d/H/M/S to select a particular time format
+
+        Args:
+            toggle (iterable of str): each item should be among Y/m/d/H/M/S
+            no_continuous_duplicate_month (bool): used for toggle=="m" only
+
+        no_continuous_duplicate_month will check if there are adjacent months
+        that are identical.  If so, check if the data is a monthly series and
+        correct for the duplicates
+
+        Examples:
+          getDate("m") will return an array of the month of the time axis
+          getDate("Ymd") will return an array with the first column showing the
+             years, second column showing the months, third column for days
         '''
+        #------------------
+        # Sanity check
+        #------------------
         if self.getCAxis() != 'T':
-            raise Exception("Dimension.getDate: not a time axis")
+            raise RuntimeError("Dimension.getDate: not a time axis")
 
         if no_continuous_duplicate_month:
             if toggle != 'm':
-                logging.warning('''no_continuous_duplicate_month only
-                applies when toggle=m''')
+                raise RuntimeError("no_continuous_duplicate_month only "+\
+                                   "applies when toggle=m")
 
-        if toggle is not None:
-            if len(toggle) != 1:
-                raise Exception('''Toggle one axis only,
-                choose one in Y/m/d/H/M/S, case matters''')
+        try:
+            _ = iter(toggle)
+        except TypeError:
+            print toggle
+            raise TypeError("toggle has to be iterable:\"Y/m/d/H/M/S\"")
+        if not all( [ t in "YmdHMS" for t in toggle]):
+            raise TypeError("toggle has to be iterable:\"Y/m/d/H/M/S\"")
 
-        timeformat = 'YmdHMS'
-        timearray = self.time2array()
+        #--------------------------------------------------------
+        # Convert time values to datetime objects using netCDF4
+        #--------------------------------------------------------
+        units = self.units.split()[0]
+        units = units if units.endswith("s") else units+"s"
 
-        if toggle:
-            result = timearray[:, timeformat.index(toggle)]
-            if toggle == 'm':
-                months_diff = numpy.diff(result)
-                if any(months_diff == 0):
-                    if no_continuous_duplicate_month:
-                        # if there are duplicated months,
-                        # correct it using the days
-                        for itime in range(len(timearray)):
-                            day = timearray[itime, 2]
-                            if day > 25:
-                                logging.warning(
-                                    'Month:{} Day:{} is refered as month {}'.\
-                                    format(result[itime], day,
-                                           numpy.mod(result[itime], 12)+1))
-                                result[itime] = numpy.mod(result[itime], 12)+1
-                            if day < 5:
-                                logging.warning(
-                                    'Month:{} Day:{} is refered as month {}'.\
-                                    format(result[itime], day,
-                                           numpy.mod(result[itime]-2, 12)+1))
-                                result[itime] = numpy.mod(result[itime]-2, 12)+1
-                    else:
-                        logging.warning(
-                            '''There are continuous duplicated months.
-                            But not correcting for them.''')
+        if units != 'months':
+            alltimes = _num2date(self.data, self.units,
+                                 self.attributes.get(
+                                     'calendar', 'standard').lower())
+            try:
+                _ = iter(alltimes)
+            except TypeError:
+                alltimes = [alltimes, ]
         else:
-            result = timearray
+            # netcdftime does not handle month as the unit
+            if 'since' not in self.units:
+                raise Exception("the dimension, assumed to be a time"+\
+                                " axis, should have a unit such as "+\
+                                "\"days since 01-JAN-2000\"")
+            if not self.is_monotonic():
+                raise ValueError("The axis is not monotonic!")
+            if (numpy.diff(self.data) < 0.).all():
+                raise ValueError("Time going backward...really?")
 
-        return result
+            t0 = self.time0() # is a datetime.datetime object
+            # at this point we knew the unit is month
+            alltimes = [t0 + relativedelta(months=int(t))
+                        for t in self.data]
+
+        # Convert flag to attribute names
+        flag2attr = dict(Y="year",  m="month", d="day", H="hour",
+                         M="minute", S="second")
+
+        #------------------------------------
+        # Compute and return results
+        #-------------------------------------
+
+        #-------------------------------------
+        # Case 1: Return everything toggled
+        #-------------------------------------
+        if toggle != "m":
+            return numpy.array([[ getattr(t, flag2attr[flag])
+                                  for flag in toggle ]
+                                for t in alltimes ]).squeeze()
+
+        # toggle == "m" - Extract months only
+        all_months = numpy.array([ t.month for t in alltimes ])
+        # Difference between months
+        month_diff = numpy.diff(all_months)
+
+        if (month_diff != 0).all():
+            #-------------------------------------------------
+            # Case 2: no continuous duplicate month, return
+            #-------------------------------------------------
+            return all_months
+        elif not no_continuous_duplicate_month:
+            #---------------------------------------------------------
+            # Case 3: not correcting duplicate month, warn and return
+            #---------------------------------------------------------
+            logging.warning("There are continuous duplicated months "+\
+                            "but not correcting for them.")
+            return all_months
+        else:
+            #------------------------------------------------------------------
+            # Case 4: there are continuous duplicate months, and the user wants
+            # to correct for them; useful for monthly data analysis
+            #------------------------------------------------------------------
+            # Are we really dealing with monthly data?
+            month_delta = _date2num(self.time0() + relativedelta(months=1),
+                                    self.units, self.attributes.get(
+                                        'calendar', 'standard').lower())
+            # Average time step
+            avg_dt = numpy.diff(self.data).mean()
+            if avg_dt/month_delta < 0.5 or avg_dt/month_delta > 1.5:
+                raise RuntimeError("There are continuous duplicated months "+\
+                                   "and no_continuous_duplicate_month is "+\
+                                   "True.  However it does not seem to "+\
+                                   "a monthly time series.")
+
+            #-------------------------------------------------
+            # OK. So we are dealing with monthly data
+            #-------------------------------------------------
+            # If most of the time stamps are close to the end of a calendar
+            # month, the problem can be fixed by rolling the time axis
+            # backward or forward by half a month
+            all_days = numpy.array([t.day for t in alltimes])
+            if not (sum(numpy.logical_or(
+                    all_days > 25, all_days < 5)) > len(all_days)/2):
+                raise RuntimeError("There are duplicated months and "+\
+                                   "no_continuous_duplicate_month is True. "+\
+                                   "But the calendar days provide no hint "+\
+                                   "for correction.")
+
+            move_backward = sum(all_days > 25) > sum(all_days < 5)
+            move_delta = relativedelta(days=15)
+            if isinstance(alltimes[0], _netCDF4_datetime):
+                date2num_f = partial(_date2num,
+                                     units=self.units,
+                                     calendar=self.attributes.get(
+                                         'calendar', 'standard').lower())
+                num2date_f = partial(_num2date,
+                                     units=self.units,
+                                     calendar=self.attributes.get(
+                                         'calendar', 'standard').lower())
+                if move_backward:
+                    alltimes = num2date_f(date2num_f(alltimes)-\
+                                          date2num_f(self.time0()+move_delta))
+                else:
+                    alltimes = num2date_f(date2num_f(alltimes)+\
+                                          date2num_f(self.time0()+move_delta))
+            else:
+                # alltimes are python datetime.datetime object
+                # can be added to relativedelta directly
+                if move_backward:
+                    alltimes = numpy.array(alltimes)-move_delta
+                else:
+                    alltimes = numpy.array(alltimes)+move_delta
+
+            all_months = numpy.array([t.month for t in alltimes])
+            if (numpy.diff(all_months) != 0).all():
+                logging.warning("Months are computed by shifting the time "+\
+                                "axis {}".format("backward" if move_backward
+                                                 else "forward"))
+                return all_months
+            else:
+                raise RuntimeError("Failed to correct for continuous "+\
+                                   "duplicated months")
+
 
 
 class Variable(object):
@@ -768,6 +883,17 @@ class Variable(object):
         return Variable(data=data, dims=self._broadcast_dim_(other, data),
                         parent=self, history=history)
 
+    def __rsub__(self, other):
+        var1 = _getdata(self)
+        var2 = _getdata(other)
+        history = ""
+        name1 = getattr(self, 'varname', str(self))
+        name2 = getattr(other, 'varname', str(other))
+        data = var2 - var1
+        history = name2 + '-' + name1
+        return Variable(data=data, dims=self._broadcast_dim_(other, data),
+                        parent=self, history=history)
+
     def __add__(self, other):
         var1 = _getdata(self)
         var2 = _getdata(other)
@@ -779,6 +905,9 @@ class Variable(object):
         return Variable(data=data, dims=self._broadcast_dim_(other, data),
                         parent=self, history=history)
 
+    def __radd__(self, other):
+        return self.__add__(other)
+
     def __div__(self, other):
         var1 = _getdata(self)
         var2 = _getdata(other)
@@ -789,6 +918,18 @@ class Variable(object):
         history = name1 + '/' + name2
         return Variable(data=data, dims=self._broadcast_dim_(other, data),
                         parent=self, history=history)
+
+    def __rdiv__(self, other):
+        var1 = _getdata(self)
+        var2 = _getdata(other)
+        history = ""
+        name1 = getattr(self, 'varname', str(self))
+        name2 = getattr(other, 'varname', str(other))
+        data = var2 / var1
+        history = name2 + '/' + name1
+        return Variable(data=data, dims=self._broadcast_dim_(other, data),
+                        parent=self, history=history)
+
 
     def __mul__(self, other):
         var1 = _getdata(self)
@@ -802,6 +943,8 @@ class Variable(object):
                         dims=self._broadcast_dim_(other, data),
                         parent=self, history=history)
 
+    def __rmul__(self, other):
+        return self.__mul__(other)
 
     def __getitem__(self, sliceobj):
         a = Variable(data=self.data, varname=self.varname, parent=self)
@@ -809,7 +952,6 @@ class Variable(object):
         a._slicing_(sliceobj)
         a.addHistory('__getitem__['+str(sliceobj)+']')
         return a
-
 
     def __setitem__(self, sliceobj, val):
         if type(sliceobj) is dict:
@@ -1057,17 +1199,28 @@ class Variable(object):
         return var
 
 
-    def getDate(self, toggle=None, no_continuous_duplicate_month=False):
-        ''' Return the time axis date in an array format as
-        Year,Month,Day,Hour,Minute,Second
-        Toggle one in Y/m/d/H/M/S to select a particular time format
-        e.g. getDate('m') will return an array of the month of the time axis
+    def getDate(self, *args, **kwargs):
+        '''  Return the time axis date in an array format of
+        "Year,Month,Day,Hour,Minute,Second"
+        Toggle one or many among Y/m/d/H/M/S to select a particular time format
+
+        Args:
+            toggle (iterable of str): each item should be among Y/m/d/H/M/S
+            no_continuous_duplicate_month (bool): used for toggle=="m" only
+
+        no_continuous_duplicate_month will check if there are adjacent months
+        that are identical.  If so, check if the data is a monthly series and
+        correct for the duplicates
+
+        Examples:
+          getDate("m") will return an array of the month of the time axis
+          getDate("Ymd") will return an array with the first column showing the
+             years, second column showing the months, third column for days
         '''
         if 'T' not in self.getCAxes():
             raise Exception("There is no recognized time axis in Variable:"+\
                             self.varname)
-        return self.dims[self.getCAxes().index('T')].getDate(
-            toggle, no_continuous_duplicate_month)
+        return self.dims[self.getCAxes().index('T')].getDate(*args, **kwargs)
 
 
 def _getdata(other):
@@ -2191,15 +2344,15 @@ def UseMapplot(f_pylab):
         Args:
             variable (geodat.nc.Variable): should be 2D (singlet dimension will
                 be removed localling in this function)
-            basemap_kwargs (dict): optional.  If provided, it is parsed to 
+            basemap_kwargs (dict): optional.  If provided, it is parsed to
                 mpl_toolkits.basemap.Basemap while setting up the map
 
         Other arguments and keyword arguments are parsed to f_pylab (the pylab
         function f_pylab provided).
-        
+
         Returns:
            m, cs (mpl_toolkits.basemap.Basemap, output of f_pylab)
-        
+
         If the dimensions are not recognized as latitudes and longitudes, no map
         is made; f_pylab(x,y,data) is called and its output(s) are returned
         '''

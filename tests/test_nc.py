@@ -3,12 +3,17 @@ import os
 import unittest
 import numpy
 import functools
+import itertools
 
 import geodat.nc
 
+
 def var_dummy(ntime,nlat,nlon):
-    time_dim = geodat.nc.Dimension(data=numpy.arange(ntime,dtype=numpy.float),
-                                   units="months since 0001-01-01",
+    month_day = 365.25/12.
+    time_dim = geodat.nc.Dimension(data=numpy.arange(394.,ntime*month_day+394.,
+                                                     step=month_day,
+                                                     dtype=numpy.float),
+                                   units="days since 0001-01-01",
                                    dimname="time",
                                    attributes={"calendar":"julian"})
     lon_dim = geodat.nc.Dimension(data=numpy.linspace(0.,360.,nlon,
@@ -23,6 +28,7 @@ def var_dummy(ntime,nlat,nlon):
                               reshape(ntime,nlat,nlon),
                               dims=[time_dim,lat_dim,lon_dim],
                               varname="temp")
+
 
 def skipUnlessNetCDF4Exists():
     try:
@@ -50,21 +56,28 @@ def skipUnlessPyFerretExists():
 
 class NCVariableTestCase(unittest.TestCase):
     def setUp(self):
-        self.var = var_dummy(12,50,60)
+        self.var = var_dummy(24,50,60)
         self.__name__ = "temp"
 
     def test_getvar_data(self):
-        self.assertEqual(self.var.data.shape,(12,50,60))
+        self.assertEqual(self.var.data.shape,(24,50,60))
     
     def test_getCAxes(self):
         self.assertEqual(self.var.getCAxes(),["T","Y","X"])
     
     def test_sliceVar(self):
         self.assertEqual(self.var[:2,:3,:4].data.shape,(2,3,4))
-    
+
+    def test_getDate_month(self):
+        months_iter = itertools.cycle(range(1,13))
+        months = numpy.array([ months_iter.next() 
+                               for _ in range(self.var.data.shape[0])])
+        self.assertTrue((self.var.getDate("m",True) == months).\
+                        all())
+
     def test_wgtave(self):
         self.assertAlmostEqual(float(self.var.wgt_ave().data),
-                               17999.5,1)
+                               35999.5,1)
     
     def test_timeave(self):
         self.assertEqual(self.var[...,:3,:4].time_ave().data.shape,(1,3,4))
