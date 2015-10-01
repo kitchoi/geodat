@@ -139,29 +139,80 @@ class NCVariableTestCase(unittest.TestCase):
         self.assertTrue(numpy.allclose((self.var + 2).data,
                                        self.var.data + 2))
 
+    def test_radd_scalar(self):
+        self.assertTrue(numpy.allclose((2 + self.var).data,
+                                       self.var.data + 2))
+
     def test_sub_scalar(self):
         self.assertTrue(numpy.allclose((self.var - 2).data,
                                        self.var.data - 2))
+    def test_rsub_scalar(self):
+        self.assertTrue(numpy.allclose((2 - self.var).data,
+                                       2 - self.var.data))
 
     def test_mul_scalar(self):
         self.assertTrue(numpy.allclose((self.var * 2).data,
                                        self.var.data * 2))
 
+    def test_rmul_scalar(self):
+        self.assertTrue(numpy.allclose((2 * self.var).data,
+                                       self.var.data * 2))
+
     def test_div_scalar(self):
         self.assertTrue(numpy.allclose((self.var / 2).data,
                                        self.var.data / 2))
+    def test_rdiv_scalar(self):
+        self.assertTrue(numpy.allclose((2 / self.var).data,
+                                       2 / self.var.data))
 
     def test_add_broadcast(self):
         self.assertTrue(numpy.allclose((self.var.time_ave() + self.var).data,
                                        self.var.data.mean(axis=0) + \
                                        self.var.data))
 
+    @expectImportErrorUnlessModuleExists("netCDF4")
     def test_timeslices(self):
-        nNDJF = sum(numpy.logical_or(self.var.getDate("m") >= 11,
-                                     self.var.getDate("m") <= 2))
+        nNDJF = sum(numpy.logical_or(self.var.getDate("m",True) >= 11,
+                                     self.var.getDate("m",True) <= 2))
         self.assertEqual(geodat.nc.TimeSlices(self.var[:, :2, :3],
-                                              11., 2., "m").data.shape[0],
+                                              11., 2., "m", True).data.shape[0],
                          nNDJF)
+
+    def test_climatology(self):
+        clim = geodat.nc.climatology(self.var)
+        self.assertTrue(clim.dims[clim.getCAxes().index("T")].is_climo())
+
+    def test_anomaly(self):
+        clim = geodat.nc.climatology(self.var)
+        anom = geodat.nc.anomaly(self.var, clim=clim)
+        self.assertTrue(numpy.allclose(
+            (geodat.nc.clim2long(clim,anom) + anom).data,
+            self.var.data))
+
+    def test_concatenate(self):
+        newvar = geodat.nc.concatenate([self.var[4], self.var[5]])
+        self.assertTrue(numpy.allclose(newvar.getTime(),
+                                       self.var.getTime()[4:6]))
+
+    def test_conform_region(self):
+        regional = self.var.getRegion(lat=(-40.,40.),lon=(100.,200.))
+        conform_region = geodat.nc.conform_region(self.var, regional)
+        regional_domain = regional.getDomain("XY")
+        self.assertTrue(conform_region["lat"] == regional_domain["Y"] and \
+                        conform_region["lon"] == regional_domain["X"])
+
+    @expectImportErrorUnlessModuleExists("pyferret")
+    def test_conform_regrid(self):
+        regional = self.var.getRegion(lat=(-40.,40.),lon=(100.,200.))
+        conformed, regional = geodat.nc.conform_regrid(self.var, regional)
+        self.assertTrue(numpy.allclose(conformed.getLatitude(),
+                                       regional.getLatitude()) and \
+                        numpy.allclose(conformed.getLongitude(),
+                                       regioinal.getLongitude()))
+
+    def test_is_monotonic(self):
+        newvar = self.var.getRegion(lon=(100.,260.))
+        self.assertTrue(newvar.dims[newvar.getCAxes().index("X")].is_monotonic())
 
     @expectImportErrorUnlessModuleExists("netCDF4")
     def test_savefile(self):
