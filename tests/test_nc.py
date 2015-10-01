@@ -1,4 +1,5 @@
 import os
+import importlib
 
 import unittest
 import numpy
@@ -30,27 +31,21 @@ def var_dummy(ntime,nlat,nlon):
                               varname="temp")
 
 
-def skipUnlessNetCDF4Exists():
+
+def expectImportErrorUnlessModuleExists(module_name):
+    ''' Runtime dependencies will lead to ImportError 
+    The library is supposed to check that and notify the 
+    user that a dependency is required for a function
+    '''
     try:
-        import netCDF4
+        importlib.import_module(module_name)
     except ImportError:
-        return unittest.skip("Cannot load netCDF4")
-    return lambda func: func
-
-
-def skipUnlessSpharmExists():
-    try:
-        import spharm
-    except ImportError:
-        return unittest.skip("Cannot load spharm")
-    return lambda func: func
-
-
-def skipUnlessPyFerretExists():
-    try:
-        import pyferret
-    except ImportError:
-        return unittest.skip("Cannot load pyferret")
+        def _test_raise(testcase):
+            print module_name+" cannot be imported and an ImportError "+\
+                "is expected to be raised by the code.  The module name "+\
+                "should be included in the error message"
+            testcase.assertRaisesRegexp(ImportError, module_name)
+        return lambda func:_test_raise
     return lambda func: func
 
 
@@ -68,7 +63,24 @@ class NCVariableTestCase(unittest.TestCase):
     def test_sliceVar(self):
         self.assertEqual(self.var[:2,:3,:4].data.shape,(2,3,4))
 
-    @skipUnlessNetCDF4Exists()
+    def test_getSlice(self):
+        self.assertEqual(self.var.getSlice(latitude=(-45.,45.),
+                                           longitude=(100.,200.)),
+                         (slice(None, None, None),
+                          slice(13, 37, None),
+                          slice(17, 34, None)))
+
+    def test_getRegion(self):
+        self.assertEqual(self.var.getRegion(latitude=(-45.,45.),
+                                            longitude=(100.,200.)).data.shape,
+                         (24, 24, 17))
+
+    def test_getRegion_no_side_effect(self):
+        newvar = self.var.getRegion(latitude=(-45.,45.),
+                                    longitude=(100.,200.))
+        self.assertNotEqual(newvar.data.shape, self.var.data.shape)
+
+    @expectImportErrorUnlessModuleExists("netCDF4")
     def test_getDate_month(self):
         months_iter = itertools.cycle(range(1,13))
         months = numpy.array([ months_iter.next() 
@@ -104,7 +116,7 @@ class NCVariableTestCase(unittest.TestCase):
                                        self.var.data.mean(axis=0) + \
                                        self.var.data))
 
-    @skipUnlessNetCDF4Exists()
+    @expectImportErrorUnlessModuleExists("netCDF4")
     def test_savefile(self):
         geodat.nc.savefile("test_nc_file.nc",self.var)
         tmp = geodat.nc.getvar("test_nc_file.nc","temp")
@@ -112,13 +124,13 @@ class NCVariableTestCase(unittest.TestCase):
         if os.path.exists("test_nc_file.nc"):
             os.remove("test_nc_file.nc")
 
-    @skipUnlessSpharmExists()
+    @expectImportErrorUnlessModuleExists("spharm")
     def test_regrid_spharm(self):
         regridded = geodat.nc.regrid(self.var,nlat=100,nlon=120)
         self.assertAlmostEqual(float(regridded.wgt_ave().data),
                                17999.5,1)
     
-    @skipUnlessPyFerretExists()
+    @expectImportErrorUnlessModuleExists("pyferret")
     def test_regrid_pyferret(self):
         regridded = geodat.nc.pyferret_regrid(self.var[...,::2,::2], self.var)
         self.assertAlmostEqual(float(regridded.wgt_ave().data),
