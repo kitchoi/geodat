@@ -390,7 +390,6 @@ class Dimension(object):
         try:
             _ = iter(toggle)
         except TypeError:
-            print toggle
             raise TypeError("toggle has to be iterable:\"Y/m/d/H/M/S\"")
         if not all( [ t in "YmdHMS" for t in toggle]):
             raise TypeError("toggle has to be iterable:\"Y/m/d/H/M/S\"")
