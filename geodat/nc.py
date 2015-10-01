@@ -318,12 +318,8 @@ class Dimension(object):
         ''' Return True if the axis is a climatological time axis '''
         if self.getCAxis() != 'T':
             return False
-        months = self.time2array()[:, 1]
-        is_climo = len(self.data) == 12 and \
-                   months.std() > 3. and \
-                   months.std() < 4.  # depends on the calendar,
-        # sometimes there are duplicated months due to leap years
-        return is_climo
+        return all([ x == y for x,y in zip(
+            sorted(self.getDate("m", True)), range(1, 13)) ])
 
 
     def time2array(self):
@@ -1006,7 +1002,7 @@ class Variable(object):
             self.addHistory('setRegion('+str(region)+')')
         return self
 
-    def setRegion_value(self, value, **kwargs): # Maybe unused
+    def setRegion_value(self, value, **kwargs):
         ''' Set values for a particular region
         Example: variable.setRegion_value(0.,lat=(-90.,-30.))
         '''
