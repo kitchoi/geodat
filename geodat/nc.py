@@ -644,10 +644,11 @@ class Variable(object):
             self.ensureMasked()
 
         # Check to make sure the variable data shape matches the dimensions'
-        self.check_shape_matches_dims()
+        if not self.is_shape_matches_dims():
+            raise ValueError("Dimension mismatch.")
 
 
-    def check_shape_matches_dims(self):
+    def is_shape_matches_dims(self):
         ''' Check if the shape of the data matches the dimensions
 
         Raise ValueError if the dimensions do not match
@@ -655,9 +656,9 @@ class Variable(object):
         var_data_shape = self.data.shape
         dim_shape = tuple([dim.data.size for dim in self.dims])
         if var_data_shape != dim_shape:
-            raise ValueError("Dimension mismatch.\n"+
-                             "data shape:{}, dimensions shape:{}".format(
-                                 var_data_shape,dim_shape))
+            return False
+        else:
+            return True
 
 
     def addHistory(self, string):
