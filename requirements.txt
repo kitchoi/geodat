@@ -4,3 +4,5 @@ six
 scipy
 python-dateutil
 basemap
+pyspharm
+netCDF4
