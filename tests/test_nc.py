@@ -65,21 +65,46 @@ def expectImportErrorUnlessModuleExists(module_name):
 
 class NCVariableTestCase(unittest.TestCase):
     def setUp(self):
-        self.__name__ = "temp"
+        " Create a geodat.nc.Variable for testing "
         self.ntime = 24
         self.nlat = 50
         self.nlon = 60
         self.var = var_dummy(self.ntime, self.nlat, self.nlon)
 
     def test_getCAxes(self):
+        " Test if the cartesian axes can be identified using the units "
         self.assertEqual(self.var.getCAxes(), ["T", "Y", "X"])
 
     def test_getAxis(self):
+        " Test if the axis/axes can be retrieved properly "
         self.assertTrue(numpy.allclose(self.var.getAxis("Y"),
                                        numpy.linspace(-90., 90., self.nlat)))
+        self.assertTrue(numpy.allclose(self.var.getAxis("X"),
+                                       numpy.linspace(0., 360., self.nlon,
+                                                      endpoint=False)))
+        self.assertTrue(numpy.allclose(
+            self.var.getAxis("Y"), self.var.getLatitude()))
+        self.assertTrue(numpy.allclose(
+            self.var.getAxis("X"), self.var.getLongitude()))
+        self.assertEqual(len(self.var.getAxes()), 3)
 
     def test_sliceVar(self):
+        " geodat.nc.Variable can be sliced like a numpy array object "
         self.assertEqual(self.var[:2, :3, :4].data.shape, (2, 3, 4))
+
+        sliced_var = self.var[2, :4, 4]
+        # Make sure the dimension also matches
+        self.assertTrue(sliced_var.is_shape_matches_dims())
+        # Singlet dimension should be maintained as well
+        self.assertTrue(numpy.allclose(
+            sliced_var.data,
+            self.var.data[2, :4, 4][numpy.newaxis, ..., numpy.newaxis]))
+        self.assertEqual(sliced_var.getTime(),
+                         self.var.getTime()[2])
+        self.assertEqual(sliced_var.getLongitude(),
+                         self.var.getLongitude()[4])
+        self.assertTrue(numpy.allclose(sliced_var.getLatitude(),
+                                       self.var.getLatitude()[:4]))
 
     def test_getSlice(self):
         self.assertEqual(self.var.getSlice(latitude=(-45.,45.),
@@ -122,7 +147,9 @@ class NCVariableTestCase(unittest.TestCase):
                                35999.5,1)
     
     def test_timeave(self):
-        self.assertEqual(self.var[..., :3, :4].time_ave().data.shape,(1, 3, 4))
+        self.assertTrue(numpy.allclose(
+            self.var[..., :3, :4].time_ave().data.squeeze(),
+            self.var.data[..., :3, :4].mean(axis=0)))
 
     def test_squeeze(self):
         self.assertEqual(self.var[0, :3, :4].squeeze().data.shape, (3, 4))
