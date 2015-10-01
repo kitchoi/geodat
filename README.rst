@@ -1,6 +1,12 @@
 Geophysical Data Analysis Tool (GeoDAT)'s documentation
 ===================================================================
 
+.. image:: https://travis-ci.org/kitchoi/geodat.svg?branch=master
+    :target: https://travis-ci.org/kitchoi/geodat
+
+.. image:: https://coveralls.io/repos/kitchoi/geodat/badge.svg?branch=master&service=github
+  :target: https://coveralls.io/github/kitchoi/geodat?branch=master
+
 GeoDAT is a python library that provides utilities for handling, analysing and visualising geophysical climate data.  Here are just a few of the functions of GeoDAT:
 
 * Extract data from and write to NetCDF files
