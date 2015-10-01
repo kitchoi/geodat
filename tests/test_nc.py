@@ -178,10 +178,12 @@ class NCVariableTestCase(unittest.TestCase):
                                               11., 2., "m", True).data.shape[0],
                          nNDJF)
 
+    @expectImportErrorUnlessModuleExists("netCDF4")
     def test_climatology(self):
         clim = geodat.nc.climatology(self.var)
         self.assertTrue(clim.dims[clim.getCAxes().index("T")].is_climo())
 
+    @expectImportErrorUnlessModuleExists("netCDF4")
     def test_anomaly(self):
         clim = geodat.nc.climatology(self.var)
         anom = geodat.nc.anomaly(self.var, clim=clim)

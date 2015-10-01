@@ -57,7 +57,8 @@ if _NETCDF4_IMPORTED:
     _netCDF4_datetime = _netCDF4.netcdftime.datetime
 else:
     _NETCDF4_IMPORT_ERROR = ImportError("The netCDF4 package is "+\
-                                        "required but fail to import")
+                                        "required but fail to import. "+\
+                            "See https://pypi.python.org/pypi/netCDF4/0.8.2")
     _num2date = _date2num = _netCDF4_Dataset = \
                 _throw_error(_NETCDF4_IMPORT_ERROR)
 
