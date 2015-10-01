@@ -156,6 +156,13 @@ class NCVariableTestCase(unittest.TestCase):
                                        self.var.data.mean(axis=0) + \
                                        self.var.data))
 
+    def test_timeslices(self):
+        nNDJF = sum(numpy.logical_or(self.var.getDate("m") >= 11,
+                                     self.var.getDate("m") <= 2))
+        self.assertEqual(geodat.nc.TimeSlices(self.var[:, :2, :3],
+                                              11., 2., "m").data.shape[0],
+                         nNDJF)
+
     @expectImportErrorUnlessModuleExists("netCDF4")
     def test_savefile(self):
         geodat.nc.savefile("test_nc_file.nc",self.var)
