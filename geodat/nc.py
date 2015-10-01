@@ -327,47 +327,10 @@ class Dimension(object):
         return ndarray of size (N,6) where N is the number of
         time point, and the six indices represent:
         YEAR,MONTH,DAY,HOUR,MINUTE,SECOND
+
+        Same as getDate()
         '''
-        units = self.units.split()[0]
-        units = units if units.endswith("s") else units+"s"
-
-        if units != 'months':
-            alltimes = _num2date(self.data, self.units,
-                                 self.attributes.get(
-                                     'calendar', 'standard').lower())
-            try:
-                _ = iter(alltimes)
-            except TypeError:
-                alltimes = [alltimes, ]
-            time_list = numpy.array([[t.year,
-                                      t.month,
-                                      t.day,
-                                      t.hour,
-                                      t.minute,
-                                      t.second] for t in alltimes])
-            return time_list
-        else:
-            # netcdftime does not handle month as the unit
-            if 'since' not in self.units:
-                raise Exception("the dimension, assumed to be a time"+\
-                                " axis, should have a unit such as "+\
-                                "\"days since 01-JAN-2000\"")
-            if not self.is_monotonic():
-                raise ValueError("The axis is not monotonic!")
-            if (numpy.diff(self.data) < 0.).all():
-                raise ValueError("Time going backward...really?")
-
-            t0 = self.time0() # is a datetime.datetime object
-            # at this point we knew the unit is month
-            alltimes = [t0 + relativedelta(months=int(t))
-                        for t in self.data]
-            time_list = [[t.year,
-                          t.month,
-                          t.day,
-                          t.hour,
-                          t.minute,
-                          t.second] for t in alltimes]
-            return numpy.array(time_list)
+        return self.getDate()
 
 
     def time0(self):
