@@ -1163,7 +1163,7 @@ class Variable(object):
         return var
 
 
-    def getDate(self, *args, **kwargs):
+    def getDate(self, toggle="YmdHMS", no_continuous_duplicate_month=False):
         '''  Return the time axis date in an array format of
         "Year,Month,Day,Hour,Minute,Second"
         Toggle one or many among Y/m/d/H/M/S to select a particular time format
@@ -1191,7 +1191,9 @@ class Variable(object):
         if 'T' not in self.getCAxes():
             raise Exception("There is no recognized time axis in Variable:"+\
                             self.varname)
-        return self.dims[self.getCAxes().index('T')].getDate(*args, **kwargs)
+        return self.dims[self.getCAxes().index('T')].\
+            getDate(toggle=toggle,
+                    no_continuous_duplicate_month=no_continuous_duplicate_month)
 
 
 def _getdata(other):
@@ -1220,53 +1222,17 @@ def apply_mask(var, mask):
     return newvar
 
 
-def nc_cal(f):
+def nc_cal(func):
     ''' A decorator that returns a variable object
     Accept only function that operates on a numpy array
     '''
-    @wraps(f)
-    def g(var, *args, **kwargs):
-        history = "".join([f.__name__, args.__str__(), kwargs.__str__()])
+    @wraps(func)
+    def newfun(var, *args, **kwargs):
+        history = "".join([func.__name__, args.__str__(), kwargs.__str__()])
         var.ensureMasked()
-        return Variable(data=f(var.data, *args, **kwargs), parent=var,
+        return Variable(data=func(var.data, *args, **kwargs), parent=var,
                         history=history)
-    return g
-
-
-def ave(var, axis=None):
-    '''Backup.  To be trashed
-    '''
-    var.ensureMasked()
-    data = var.data
-    cartesian_axes = var.getCAxes()
-    dimnames = var.getDimnames()
-    if axis is None:
-        axis = range(len(dimnames))
-    # If the input axis is a single integer, convert it into a list
-    if type(axis) is int:
-        axis = [axis]
-
-    history = 'wgt_ave(axis='+','.join([str(ax) for ax in axis])+')'
-    if type(axis) is str:
-        axis = axis.upper()
-        axis = [cartesian_axes.index(ax) for ax in axis]
-
-    weights = numpy.ones(data.shape, dtype=data.dtype)
-    has_Y = 'Y' in [cartesian_axes[iax] for iax in axis]
-    if has_Y:
-        sliceobj = [numpy.newaxis if cax != 'Y' else slice(None)
-                    for cax in cartesian_axes]
-        weights = stat.lat_weights(var.getLatitude())[sliceobj]
-
-    data = data*weights
-    data = keepdims.mean(data, axis=axis)/keepdims.mean(weights, axis=axis)
-    dims = [Dimension(numpy.array([1,], dtype='i4'),
-                      var.dims[iax].dimname, units=var.dims[iax].units)
-            if iax in axis else var.dims[iax]
-            for iax in range(var.data.ndim)]
-    return Variable(data=data.astype(var.data.dtype),
-                    dims=dims, parent=var, history=history)
-
+    return newfun
 
 def wgt_ave(var, axis=None):
     '''A more general routine for averaging
