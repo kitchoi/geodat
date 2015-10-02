@@ -16,6 +16,44 @@ GeoDAT is a python library that provides utilities for handling, analysing and v
 * Handle convergence of meridians on a latitude-longitude grid
 * Frequently used functions such as time average, climatology etc.
 
+
+Installation
+=============
+
+After downloading the source, simply do
+
+.. code-block:: sh
+
+   python setup.py install
+
+Python setuptools will attempt to install required packages.  But in case of missing system level libraries, error messages will be shown.  You may need to manually install some libraries on your machine.
+
+Required system-level libraries for build
+-------------------------------------------
+     * liblapack-dev
+     * libblas-dev
+     * gfortran
+     * libgeos-dev
+     * libhdf5-serial-dev
+     * libnetcdf-dev
+     * python-sphere
+
+Required Python packages (requirements.txt)
+------------------------------------------------
+     * matplotlib
+     * numpy
+     * six
+     * scipy
+     * python-dateutil
+     * basemap
+     * pyspharm
+     * netCDF4
+
+Language support
+--------------------
+     * Python 2.7
+
+
 Quick References
 ===================================================================
 
