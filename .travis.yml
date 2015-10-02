@@ -11,7 +11,7 @@ addons:
     - libgeos-dev
 
 install:
-  - sudo apt-get install libhdf5-dev libhdf5-serial-dev
+  - sudo apt-get install libhdf5-serial-dev
   - sudo ln -s /usr/lib/libgeos-3.2.2.so /usr/lib/libgeos.so
   - sudo ln -s /usr/lib/libgeos-3.3.8.so /usr/lib/libgeos.so.1
   - #pip install --allow-external basemap --allow-unverified basemap basemap

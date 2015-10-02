@@ -5,6 +5,7 @@ import unittest
 import numpy
 import functools
 import itertools
+import urllib
 
 import geodat.nc
 
@@ -24,7 +25,7 @@ def var_dummy(ntime,nlat,nlon):
     lat_dim = geodat.nc.Dimension(data=numpy.linspace(-90.,90.,nlat),
                                   units="degreeN",
                                   dimname="lat")
-    
+
     return geodat.nc.Variable(data=numpy.arange(float(ntime*nlat*nlon)).\
                               reshape(ntime,nlat,nlon),
                               dims=[time_dim,lat_dim,lon_dim],
@@ -41,8 +42,8 @@ def is_module_exist(module_name):
 
 
 def expectImportErrorUnlessModuleExists(module_name):
-    ''' Runtime dependencies will lead to ImportError 
-    The library is supposed to check that and notify the 
+    ''' Runtime dependencies will lead to ImportError
+    The library is supposed to check that and notify the
     user that a dependency is required for a function
     '''
     def new_test_func(func):
@@ -93,12 +94,16 @@ class NCVariableTestCase(unittest.TestCase):
         self.assertEqual(self.var[:2, :3, :4].data.shape, (2, 3, 4))
 
         sliced_var = self.var[2, :4, 4]
-        # Make sure the dimension also matches
+
+        # Make sure the number of dimensions and their sizes matches
         self.assertTrue(sliced_var.is_shape_matches_dims())
+
         # Singlet dimension should be maintained as well
         self.assertTrue(numpy.allclose(
             sliced_var.data,
             self.var.data[2, :4, 4][numpy.newaxis, ..., numpy.newaxis]))
+
+        # Make sure the dimension values are as expected
         self.assertEqual(sliced_var.getTime(),
                          self.var.getTime()[2])
         self.assertEqual(sliced_var.getLongitude(),
@@ -126,7 +131,7 @@ class NCVariableTestCase(unittest.TestCase):
     @expectImportErrorUnlessModuleExists("netCDF4")
     def test_getDate_month(self):
         months_iter = itertools.cycle(range(1,13))
-        months = numpy.array([ months_iter.next() 
+        months = numpy.array([ months_iter.next()
                                for _ in range(self.var.data.shape[0])])
         self.assertTrue((self.var.getDate("m",True) == months).\
                         all())
@@ -145,7 +150,7 @@ class NCVariableTestCase(unittest.TestCase):
     def test_wgtave(self):
         self.assertAlmostEqual(float(self.var.wgt_ave().data),
                                35999.5,1)
-    
+
     def test_timeave(self):
         self.assertTrue(numpy.allclose(
             self.var[..., :3, :4].time_ave().data.squeeze(),
@@ -256,7 +261,7 @@ class NCVariableTestCase(unittest.TestCase):
         regridded = geodat.nc.regrid(self.var,nlat=100,nlon=120)
         self.assertAlmostEqual(float(regridded.wgt_ave().data),
                                17999.5,1)
-    
+
     @expectImportErrorUnlessModuleExists("pyferret")
     def test_regrid_pyferret(self):
         regridded = geodat.nc.pyferret_regrid(self.var[...,::2,::2], self.var)
