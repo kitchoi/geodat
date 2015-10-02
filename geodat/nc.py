@@ -610,19 +610,14 @@ class Variable(object):
             self.addHistory('From file: '+reader.fp.name)
             self._ncfile = reader
         elif parent is not None:
-            # Copy instance
-            try:
-                self._copy_from_parent_(parent)
-            except AttributeError:
-                raise AttributeError("Type of parent is :"+str(type(parent))+\
-                                     ". Expect geodat.nc.Variable")
+            self._copy_from_parent_(parent)
         else:
             # no recognizable reader or parent variable is given;
             #data, varname should not be None
             if data is None:
-                raise Exception('data should not be None')
+                raise AttributeError('data is not provided')
             if varname is None:
-                raise Exception('varname should not be None')
+                raise AttributeError('varname is not provided')
 
         # If parent is given, these will overwrite the properties
         # copied from parent
@@ -636,7 +631,7 @@ class Variable(object):
         if attributes is not None:
             self.attributes.update(attributes)
         if self.dims is None:
-            self.dims = [None,]*self.data.ndim
+            raise AttributeError("dims (dimensions) is not provided")
         if history is not None:
             self.addHistory(history)
 
@@ -808,8 +803,18 @@ class Variable(object):
         from a parent variable
         Use copy.copy instead of deepcopy
         """
+        if not isinstance(parent.dims, list):
+            raise TypeError("parent.dims must be a list")
+        if any([not isinstance(dim, Dimension) for dim in parent.dims]):
+            raise TypeError("parent.dims must be a list of Dimension instance")
         self.dims = copy.copy(parent.dims)
+
+        if not isinstance(parent.attributes, dict):
+            raise TypeError("parent.attributes must be a dict instance")
         self.attributes = copy.copy(parent.attributes)
+
+        if not isinstance(parent.varname, str):
+            raise TypeError("parent.varname must be a string instance")
         self.varname = copy.copy(parent.varname)
 
     def _broadcast_dim_(self, other, result):
