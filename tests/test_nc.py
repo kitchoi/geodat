@@ -32,15 +32,6 @@ def var_dummy(ntime,nlat,nlon):
                               varname="temp")
 
 
-
-def is_module_exist(module_name):
-    try:
-        importlib.import_module(module_name)
-    except ImportError:
-        return False
-    return True
-
-
 def expectImportErrorUnlessModuleExists(module_name):
     ''' Runtime dependencies will lead to ImportError
     The library is supposed to check that and notify the
@@ -62,6 +53,16 @@ def expectImportErrorUnlessModuleExists(module_name):
     return lambda test_func: test_func
 
 
+class Dummy(object):
+    def __init__(self, varname=None, dims=None, attributes=None):
+        if varname is not None:
+            self.varname = varname
+        if dims is not None:
+            self.dims = dims
+        if attributes is not None:
+            self.attributes = attributes
+
+
 class NCVariableTestCase(unittest.TestCase):
     def setUp(self):
         ''' Create a geodat.nc.Variable for testing '''
@@ -76,13 +77,14 @@ class NCVariableTestCase(unittest.TestCase):
             os.remove("test_nc_file.nc")
 
     def test_var_setup(self):
-        ''' Test the other ways of creating Variable '''
+        ''' Test the other ways of creating a Variable '''
         # Inherit from a parent with new data
         newvar = geodat.nc.Variable(data=numpy.ones_like(self.var.data),
                                     parent=self.var)
         self.assertEqual(newvar.varname, self.var.varname)
         self.assertListEqual(newvar.dims, self.var.dims)
         self.assertDictEqual(newvar.attributes, self.var.attributes)
+
         # Inherit from a parent but update attributes
         newvar = geodat.nc.Variable(data=numpy.ones_like(self.var.data),
                                     parent=self.var,
@@ -92,7 +94,49 @@ class NCVariableTestCase(unittest.TestCase):
         newvar.attributes.pop("is_new");
         # attributes are only equal if the new attributes is removed
         self.assertDictEqual(newvar.attributes, self.var.attributes)
-        
+
+        # dimension is not provided
+        with self.assertRaises(AttributeError):
+            newvar = geodat.nc.Variable(data=numpy.array([1,1,1]),
+                                        varname="tmp")
+
+        # parent can be anything with the right attributes
+        newparent = Dummy(varname="tmp", dims=self.var.dims,
+                          attributes=dict(newparent="yes"))
+        newvar = geodat.nc.Variable(data=numpy.ones_like(self.var.data),
+                                    parent=newparent)
+        self.assertDictEqual(newvar.attributes, newparent.attributes)
+
+        # if parent does not have any of the (varname/dims/attributes)
+        # complain!
+        def complain_about_parent(parent, err):
+            with self.assertRaises(err):
+                newvar = geodat.nc.Variable(data=numpy.empty(10),
+                                            parent=parent)
+
+        complain_about_parent(Dummy(varname="tmp", dims=self.var.dims),
+                              AttributeError)
+        complain_about_parent(Dummy(varname="tmp",
+                                    attributes=self.var.attributes),
+                              AttributeError)
+        complain_about_parent(Dummy(dims=self.var.dims,
+                                    attributes=self.var.attributes),
+                              AttributeError)
+
+        # if the attributes are of the wrong type, complain too
+        complain_about_parent(Dummy(varname=1, dims=self.var.dims,
+                                    attributes=self.var.attributes),
+                              TypeError)
+        complain_about_parent(Dummy(varname="tmp", dims=self.var.dims[0],
+                                    attributes=self.var.attributes),
+                              TypeError)
+        complain_about_parent(Dummy(varname="tmp", dims=[1,2,3],
+                                    attributes=self.var.attributes),
+                              TypeError)
+        complain_about_parent(Dummy(varname="tmp", dims=self.var.dims,
+                                    attributes="bad_attribute"),
+                              TypeError)
+
 
     def test_getCAxes(self):
         ''' Test if the cartesian axes can be identified using the units '''
