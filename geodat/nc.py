@@ -5,6 +5,8 @@ The :mod:`~geodat.nc.Dimension` and :mod:`~geodat.nc.Variable` classes in this
 module act as containers of :py:mod:`~numpy` arrays which can be easily
 accessed.
 """
+from __future__ import print_function
+
 import os
 import sys
 import copy
@@ -108,21 +110,21 @@ def dataset(filenames, result=None, *args, **kwargs):
                 # Do not add dimensions to the dataset
                 continue
             if result.has_key(varname):
-                print varname+''' alread loaded.
-                Overwrite[o] or rename[r] or skip?'''
+                print("{} alread loaded. ".format(varname)+\
+                      "Overwrite[o]/rename[r] or skip? ", end="")
                 append_code = sys.stdin.readline()
                 if append_code[0] == 'o':
                     result[varname] = Variable(file_handle, varname,
                                                *args, **kwargs)
                 elif append_code[0] == 'r':
-                    print "Enter new name:"
+                    print("Enter new name: ", end="")
                     newname = sys.stdin.readline()[:-1]
                     result[newname] = Variable(file_handle, varname,
                                                *args, **kwargs)
                     result[newname].varname = newname
                 else:
-                    print " ".join("I am skipping the variable:",
-                                   varname, "in", filename)
+                    print(["I am skipping the variable:",
+                                    varname, "in", filename])
                     continue
             else:
                 result[varname] = Variable(file_handle, varname,
@@ -233,7 +235,7 @@ class Dimension(object):
                          attributes=self.attributes)
 
 
-    def info(self, detailed=False):
+    def info(self, detailed=False, file_out=None):
         """ Print brief info about the dimension
 
         if detailed is True, attributes and length of axis are also printed
@@ -244,12 +246,14 @@ class Dimension(object):
         else:
             info_str += ' = '+ str(self.data[0]) + ':' + str(self.data[-1])
         info_str += ' Unit: ' + str(self.units)
-        print info_str
+        print(info_str, file=file_out)
         if detailed:
-            print 'Length= ' + str(len(self.data))
-            print 'Attributes:'
+            print('Length=', str(len(self.data)), file=file_out)
+            print('Attributes:', file=file_out)
             for attname, val in self.attributes.items():
-                print '   ' + self.dimname + ':' + attname + ' = ' + str(val)
+                print("   {dimname}:{attname} = {val}".format(
+                    dimname=self.dimname, attname=attname, val=val),
+                               file=file_out)
 
 
     def getCAxis(self):
@@ -594,8 +598,8 @@ class Variable(object):
             try:
                 varobj = reader.variables[varname]
             except KeyError:
-                print 'Unknown variable name. Available variables: '+\
-                    ','.join(reader.variables.keys())
+                print('Unknown variable name. Available variables: '+\
+                               ','.join(reader.variables.keys()))
                 return None
             self.data = getattr(varobj, "data", None)
             self.dims = [Dimension(reader.variables[dim], dim)
@@ -676,20 +680,22 @@ class Variable(object):
             str(self.data.shape) + '>'
         return result
 
-    def info(self, detailed=False):
+    def info(self, detailed=False, file_out=None):
         """ Print brief info about the variable
         """
         # varname, dim, shape
-        print self.__repr__()
+        print(self.__repr__(), file=file_out)
 
         # Attributes:
-        print "Attributes:"
+        print("Attributes:", file=file_out)
         for attname, val in self.attributes.items():
-            print "    " + self.varname + ":" +  attname + " = " + str(val)
+            print("    {varname}:{attname} = {val}".format(
+                varname=self.varname, attname=attname, val=val),
+                  file=file_out)
 
         # Dimension info:
         for dim in self.dims:
-            dim.info(detailed=detailed)
+            dim.info(detailed=detailed, file_out=file_out)
 
     def getCAxes(self):
         """ get the cartesian axes for all the dimensions.
@@ -1730,7 +1736,7 @@ def integrate(var, axis, varname='int', versatile=False):
 
     # It may take some time to compute integration, notify the user
     if versatile:
-        print 'Integrating along axis...\b'
+        print("Integrating along axis...", end="")
 
     # This long name is probably not needed
     long_name = var.attributes.get('long_name', '') + \
@@ -1747,7 +1753,7 @@ def integrate(var, axis, varname='int', versatile=False):
                                            dtype=var.dims[ax].data.dtype)
 
     if versatile:
-        print 'Done.'
+        print('Done.')
 
     return result
 
@@ -1982,7 +1988,7 @@ def regrid(var, nlon, nlat, verbose=False):
     ilon = var.getCAxes().index('X')
     if var.data.ndim == 3:
         if verbose:
-            print "Perform regridding on 3-D data."
+            print("Perform regridding on 3-D data.")
         otherdim = [i for i in range(var.data.ndim)
                     if i != ilat and i != ilon][0]
         # new axis order:
@@ -2077,7 +2083,7 @@ def savefile(filename, listofvar, overwrite=False,
             raise Exception('appendall and overwrite can\'t be both True.')
 
         if not overwrite and not appendall:
-            print filename+" exists.  Overwrite or Append? [a/o]"
+            print(filename,"exists.  Overwrite or Append? [a/o]")
             yn = sys.stdin.readline()
             if yn[0].lower() == 'o':
                 overwrite = True
@@ -2156,15 +2162,15 @@ def savefile(filename, listofvar, overwrite=False,
         varappend = False or (varname in ncfile.variables and appendall)
         if varname in ncfile.variables and not varappend:
             # Check again
-            print "Variable "+varname+" exists.  Append variable?  \
-                [a - append]"
+            print("Variable {} exists. ".format(varname),
+                  "Append variable? [y/N]")
             append_code = sys.stdin.readline()
-            if append_code[0] == 'a':
+            if append_code[0].lower() == 'y':
                 varappend = True
             else:
                 # Likely an unintended collision of variable names
                 # Change it!
-                print "Rename variable "+varname+" as :"
+                print("Rename variable as :")
                 varname = sys.stdin.readline()[:-1]
                 var.varname = varname
 
@@ -2180,19 +2186,19 @@ def savefile(filename, listofvar, overwrite=False,
         if varappend:
             if float(var.getMissingValue()) != \
                float(ncfile.variables[varname].getncattr('_FillValue')):
-                print '''Warning: Existing var missing value: {}
-                Appending var's missing value: {}'''.format(
-                    var.getMissingValue(),
-                    ncfile.variables[varname].getncattr('_FillValue'))
+                print("Warning: Existing var missing value:",
+                      var.getMissingValue(),
+                      "Appending var's missing value:",
+                      ncfile.variables[varname].getncattr('_FillValue'))
             oldvar = ncfile.variables[varname]
             olddim = ncfile.variables[var.getDimnames()[recordax]]
             oldnrec = ncfile.variables[varname].shape[recordax]
             newnrec = var.data.shape[recordax]
             s_lice = (slice(None),)*recordax + \
                      (slice(oldnrec, newnrec+oldnrec),)
-            print "Appending variable: "+varname
+            print("Appending variable:", varname)
             oldvar[s_lice] = data2save
-            print "Appending dimensions: "+ var.getDimnames()[recordax]
+            print("Appending dimensions:", var.getDimnames()[recordax])
             olddim[oldnrec:newnrec+oldnrec] = axes[recordax]
         else:
             if data2save.ndim == 0:
@@ -2209,11 +2215,11 @@ def savefile(filename, listofvar, overwrite=False,
     ncfile.close()
     if overwrite or os.path.exists(filename) is False:
         os.rename(filename+'.tmp.nc', filename)
-        print "Saved to file: "+filename
+        print("Saved to file:", filename)
     elif appendall:
-        print "Appended to file: "+filename
+        print("Appended to file:", filename)
     else:
-        print "Temporary file created: "+filename+".tmp.nc"
+        print("Temporary file created:", filename, ".tmp.nc", sep="")
 
 
 def TimeSlices(var, lower, upper, toggle, no_continuous_duplicate_month=False):
