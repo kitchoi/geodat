@@ -16,6 +16,8 @@ GeoDAT is a python library that provides utilities for handling, analysing and v
 * Handle convergence of meridians on a latitude-longitude grid
 * Frequently used functions such as time average, climatology etc.
 
+See `full documentation here <http://http://kychoi.org/geodat_doc/>`_.
+
 
 Installation
 =============

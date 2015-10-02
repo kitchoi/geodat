@@ -186,22 +186,24 @@ class Dimension(object):
     A container for handling physical dimensions such as time, latitude.
     It can be indexed/sliced the same way as indexing a numpy array
 
-    Attributes:
-        data (numpy 1-d array): Array for the physical axis
-        dimname (str): Name of the dimension, e.g. "time"
-        units (str): Unit of the dimension, e.g. "days since 1990-01-01"
-        attributes (dict): Attributes for the dimension
-
-    Arguments:
-        data (numpy 1-d array): Array for the physical axis
-        dimname (str): Name of the dimension, e.g. "time"
-        units (str): Unit of the dimension, e.g. "days since 1990-01-01"
-        attributes (dict): Attributes for the dimension
-        parent (Dimension): from which dimname,units,attributes are copied if
-             they are not supplied already in the arguments
     """
     def __init__(self, data, dimname=None, units=None,
                  attributes=None, parent=None):
+        """
+        Attributes:
+            data (numpy 1-d array): Array for the physical axis
+            dimname (str): Name of the dimension, e.g. "time"
+            units (str): Unit of the dimension, e.g. "days since 1990-01-01"
+            attributes (dict): Attributes for the dimension
+
+        Arguments:
+            data (numpy 1-d array): Array for the physical axis
+            dimname (str): Name of the dimension, e.g. "time"
+            units (str): Unit of the dimension, e.g. "days since 1990-01-01"
+            attributes (dict): Attributes for the dimension
+            parent (Dimension): from which dimname,units,attributes are copied if
+               they are not supplied already in the arguments
+        """
         self.data = data
         self.units = units
         self.attributes = {}
@@ -537,7 +539,12 @@ class Variable(object):
     the information of the dimensions change accordingly.
 
     It can be indexed/sliced the same way as indexing a numpy array
+    """
 
+    def __init__(self, reader=None, varname=None, data=None, dims=None,
+                 attributes=None, history=None, parent=None,
+                 ensureMasked=False, **kwargs):
+        """
     Attributes:
         data (numpy.ndarray or numpy.ma.core.MaskedArray): Data array of the
           variable
@@ -581,11 +588,8 @@ class Variable(object):
                            dims=[Dimension(data=numpy.array([0.,1.,2.,3.]),)],
                            varname='name')
 
-    """
 
-    def __init__(self, reader=None, varname=None, data=None, dims=None,
-                 attributes=None, history=None, parent=None,
-                 ensureMasked=False, **kwargs):
+        """
         # Initialize the most basic properties.
         # Anything else goes to the attribute dictionary
         self.data = data
