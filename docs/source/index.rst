@@ -117,6 +117,7 @@ Contents
    pyferret_func
    signal
    stat
+   license
 
 
 
