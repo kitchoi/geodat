@@ -21,7 +21,6 @@ import scipy.io.netcdf as netcdf
 from scipy.ndimage.filters import gaussian_filter
 import pylab
 
-
 from dateutil.relativedelta import relativedelta
 
 from . import keepdims
@@ -30,9 +29,12 @@ from . import stat
 from . import math
 from . import monthly
 from .plot import mapplot
+from . import grid_func
 from . import pyferret_func
 from . import units
-from . import grid_func
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 #-----------------------------------------------------------------
@@ -58,6 +60,8 @@ if _NETCDF4_IMPORTED:
     _netCDF4_Dataset = _netCDF4.Dataset
     _netCDF4_datetime = _netCDF4.netcdftime.datetime
 else:
+    logger.warning("Failed to import netCDF4 package. "+\
+                   "Some functions may not work")
     _NETCDF4_IMPORT_ERROR = ImportError("The netCDF4 package is "+\
                                         "required but fail to import. "+\
                             "See https://pypi.python.org/pypi/netCDF4/0.8.2")
@@ -461,8 +465,8 @@ class Dimension(object):
             #---------------------------------------------------------
             # Case 3: not correcting duplicate month, warn and return
             #---------------------------------------------------------
-            logging.warning("There are continuous duplicated months "+\
-                            "but not correcting for them.")
+            logger.warning("There are continuous duplicated months "+\
+                           "but not correcting for them.")
             return all_months
         else:
             #------------------------------------------------------------------
@@ -522,9 +526,9 @@ class Dimension(object):
 
             all_months = numpy.array([t.month for t in alltimes])
             if (numpy.diff(all_months) != 0).all():
-                logging.warning("Months are computed by shifting the time "+\
-                                "axis {}".format("backward" if move_backward
-                                                 else "forward"))
+                logger.warning("Months are computed by shifting the time "+\
+                               "axis {}".format("backward" if move_backward
+                                                else "forward"))
                 return all_months
             else:
                 raise RuntimeError("Failed to correct for continuous "+\
@@ -1154,7 +1158,7 @@ class Variable(object):
             if self.dims[axis].is_monotonic():
                 N = N/numpy.abs(numpy.diff(self.getAxes()[axis]).mean())
             else:
-                logging.warning('''{var}'s {dim} is not monotonic.
+                logger.warning('''{var}'s {dim} is not monotonic.
                 N is treated as integer'''.format(var=self.varname,
                                                   dim=self.dims[axis].dimname))
                 if not isinstance(N, int):

@@ -1,14 +1,20 @@
+import logging
+
 import numpy
 
 import geodat.arrays
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 try:
     import spharm
     _SPHARM_INSTALLED = True
     _import_error = None
 except ImportError:
+    logger.warning("Failed to load spharm")
     _SPHARM_INSTALLED = False
-    _import_error = ImportError("Spharm is not installed.")
+    _import_error = ImportError("Failed to load spharm")
 
 radius =  6371200. # in m
 beta = 2*numpy.pi*2./86400./radius

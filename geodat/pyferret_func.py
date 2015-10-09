@@ -2,16 +2,23 @@ from functools import wraps
 import multiprocessing
 
 import numpy
+import logging
+
+import geodat.units
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 
 try:
     import pyferret
     _PYFERRET_INSTALLED = True
     _IMPORT_PYFERRET_ERROR = None
 except ImportError:
+    logger.warning("Failed to load pyferret.")
     _PYFERRET_INSTALLED = False
-    _IMPORT_PYFERRET_ERROR = ImportError("No pyferret is installed")
+    _IMPORT_PYFERRET_ERROR = ImportError("Failed to load pyferret")
 
-import geodat.units
 
 
 def num2fer(data, coords, dimunits,
