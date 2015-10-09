@@ -74,17 +74,6 @@ def anomaly(data, months, axis=0, clim=None):
     return data-clim_long, clim
 
 
-def getMonth(time_dim):
-    ''' Under development '''
-    try:
-        months = numpy.array([d.month
-                              for d in matplotlib.dates.num2date(time_dim)])
-    except ValueError:
-        months = numpy.array([d.month
-                              for d in matplotlib.dates.num2date(time_dim+1)])
-    return months
-
-
 def clim2long(clim, axis, months):
     ''' Extend the climatology to match the targeted time axis
     Input:
