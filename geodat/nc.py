@@ -402,8 +402,9 @@ class Dimension(object):
             _ = iter(toggle)
         except TypeError:
             raise TypeError("toggle has to be iterable:\"Y/m/d/H/M/S\"")
+
         if not all( [ t in "YmdHMS" for t in toggle]):
-            raise TypeError("toggle has to be iterable:\"Y/m/d/H/M/S\"")
+            raise ValueError("toggle has to be one of \"Y/m/d/H/M/S\"")
 
         #--------------------------------------------------------
         # Convert time values to datetime objects using netCDF4
@@ -482,7 +483,7 @@ class Dimension(object):
             if avg_dt/month_delta < 0.5 or avg_dt/month_delta > 1.5:
                 raise RuntimeError("There are continuous duplicated months "+\
                                    "and no_continuous_duplicate_month is "+\
-                                   "True.  However it does not seem to "+\
+                                   "True.  However it does not seem to be "+\
                                    "a monthly time series.")
 
             #-------------------------------------------------
