@@ -12,7 +12,7 @@ def lat_weights(lats):
     return wgts
 
 def runave(data,N,axis=0,step=None):
-    if type(data) is numpy.ma.core.MaskedArray:
+    if isinstance(data, numpy.ma.core.MaskedArray):
         data = data.filled(numpy.nan)
     if step is None:
         weights = numpy.ones((N,))
