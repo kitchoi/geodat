@@ -462,6 +462,34 @@ class NCVariableTestCase(unittest.TestCase):
             geodat.nc.wgt_sum(self.var, axis=[1,2]).data[0],
             numpy.array([[2805596.]]), rtol=0.01))
 
+    def test_runave(self):
+        answer = numpy.ma.array([numpy.ma.masked, numpy.ma.masked,
+                                 7530.0, 10530.0, 13530.0, 16530.0,
+                                 19530.0, 22530.0, 25530.0, 28530.0,
+                                 31530.0, 34530.0, 37530.0, 40530.0,
+                                 43530.0, 46530.0, 49530.0, 52530.0,
+                                 55530.0, 58530.0, 61530.0, 64530.0,
+                                 numpy.ma.masked, numpy.ma.masked])
+        self.assertTrue(numpy.allclose(self.var.runave(5, 0).data[:, 25, 30],
+                                       answer))
+        
+        print self.var.runave(150., "T").data[:, 25, 30]
+        self.assertTrue(numpy.allclose(self.var.runave(150., "T").\
+                                       data[:, 25, 30], answer))
+
+        answer = [numpy.ma.masked, numpy.ma.masked, numpy.ma.masked,
+                  numpy.ma.masked, 13530.0, 16530.0, 19530.0, 22530.0,
+                  25530.0, 28530.0, 31530.0, 34530.0, 37530.0, 40530.0,
+                  43530.0, 46530.0, 49530.0, 52530.0, 55530.0, 58530.0,
+                  numpy.ma.masked, numpy.ma.masked, numpy.ma.masked,
+                  numpy.ma.masked]
+        self.assertTrue(numpy.allclose(self.var.runave(150., "T", step=2).\
+                                       data[:, 25, 30], answer))
+
+        with self.assertRaisesRegexp(Exception, "step should be an integer"):
+            self.assertTrue(numpy.allclose(self.var.runave(150., "T", step=2.).\
+                                           data[:, 25, 30], answer))
+
 
 if __name__== "__main__":
     unittest.main(verbosity=2)
