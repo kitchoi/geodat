@@ -1148,7 +1148,30 @@ class Variable(object):
 
     def runave(self, N, axis=0, step=None):
         '''Running mean along an axis.
-        N specifies the size of the window (assumed to be odd)
+        N specifies the size of the window
+
+        Args:
+           N (int or float): size of the window
+                             if axis is int, N is treated as the number of 
+                                 array elements along the axis
+                             if axis is str, N is treated as the absolute value
+                                 of the size of window on the axis
+          axis (int or str): axis on which running mean is computed
+          step (int): how many array element is skipped for each sample
+
+        Return:
+           geodat.nc.Variable
+
+        Examples:
+           # Running average for every 5 elements on the first axis
+           >>> var.runave(5, 0)
+
+           # Running average with a window of longitudinal-width of 40-degree
+           >>> var.runave(40., "X")
+
+           # Climatological running average with a window of 3 years
+           # axis=0 for the time axis
+           >>> var.runave(3, 0, step=12)
         '''
         self.ensureMasked()
         cartesian_axes = self.getCAxes()
