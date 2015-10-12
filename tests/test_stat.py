@@ -18,13 +18,11 @@ class StatTestCase(unittest.TestCase):
 
     def test_runave(self):
         x = numpy.arange(20.)
-        answer = numpy.ma.array(x)
+        answer = numpy.ma.arange(20.)
         answer[:2] = answer[-2:] = numpy.ma.masked
-        self.assertTrue(numpy.allclose(answer, geodat_stat.runave(x, 5),
-                                       rtol=0.1))
+        self.assertTrue(numpy.ma.allclose(answer, geodat_stat.runave(x, 5),
+                                          rtol=0.1))
         answer[:4] = answer[-4:] = numpy.ma.masked
-        print answer
-        print geodat_stat.runave(x, 5, step=2)
         self.assertTrue(numpy.ma.allclose(
             answer, geodat_stat.runave(x, 5, step=2), rtol=0.1))
 
