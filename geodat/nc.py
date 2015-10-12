@@ -205,8 +205,8 @@ class Dimension(object):
             dimname (str): Name of the dimension, e.g. "time"
             units (str): Unit of the dimension, e.g. "days since 1990-01-01"
             attributes (dict): Attributes for the dimension
-            parent (Dimension): from which dimname,units,attributes are copied if
-               they are not supplied already in the arguments
+            parent (Dimension): from which dimname,units,attributes are copied
+               if they are not supplied already in the arguments
         """
         self.data = data
         self.units = units
@@ -226,8 +226,10 @@ class Dimension(object):
             self.data = data.data
             self.units = getattr(data, 'units', None)
             self.attributes.update(data.__dict__['_attributes'])
-        if type(data) is int:
-            self.data = numpy.array(data)
+        # Make sure the dimension data is a numpy array
+        if numpy.isscalar(self.data):
+            self.data = numpy.array([self.data,],
+                                    dtype=getattr(self.data,"dtype",None))
         if attributes is not None:
             self.attributes.update(attributes)
         self.attributes.update(dict(units=str(self.units)))
@@ -756,24 +758,67 @@ class Variable(object):
             axes.append(axis)
         return axes
 
-    def getAxis(self, axis):
-        ''' Return a numpy array of an axis of a variable
+
+    def getIAxis(self, axis):
+        '''Return the integer for the required cartesian axis
         Input:
-        axis - if it is an integer, return the array for that dimension
-               if it is a string, match it with the CAxes in the variable
-                  and then return the array for the dimension
+          axis (int or str): if it is an integer, do nothing and return axis
+                             if it is a str, look for index of the dimension
+                             which matches the required cartesian axis using
+                             the CAxes function
+
+        Returns:
+          int
+
+        See Also:
+          CAxes, getAxis, getDim
         '''
-        if type(axis) is int:
-            return self.dims[axis].data
-        if type(axis) is str:
+        if isinstance(axis, int):
+            return axis
+        if isinstance(axis, str):
             caxes = self.getCAxes()
             axis = _genereal_axis(axis)
             if axis not in caxes:
                 raise KeyError(self.varname+" has no "+axis+" axis")
             else:
-                return self.dims[caxes.index(axis)].data
+                return caxes.index(axis)
         else:
             raise ValueError("axis has to be either an integer or a string")
+
+
+    def getAxis(self, axis):
+        ''' Return a numpy array of an axis of a variable
+        Input:
+          axis (int or str): if it is an integer, do nothing and return axis
+                             if it is a str, look for index of the dimension
+                             which matches the required cartesian axis using
+                             the CAxes function
+
+        Returns:
+          numpy array
+
+        See Also:
+          CAxes, getIAxis, getDim
+        '''
+        return self.getDim(axis).data
+
+
+    def getDim(self, axis):
+        ''' Return a the Dimension instance of an axis of a variable
+        Input:
+          axis (int or str): if it is an integer, do nothing and return axis
+                             if it is a str, look for index of the dimension
+                             which matches the required cartesian axis using
+                             the CAxes function
+
+        Returns:
+          numpy array
+
+        See Also:
+          CAxes, getIAxis, getAxis
+        '''
+        return self.dims[self.getIAxis(axis)]
+
 
     def getDomain(self, axis=None):
         ''' Return the domain of the variable
@@ -1034,22 +1079,44 @@ class Variable(object):
         ''' Perform the slicing operation on both the data and axes
         '''
         self.data = self.data[sliceobj]
-        sliceobj = list(sliceobj)
-        newaxis_list = []
-        for iax, sl in enumerate(sliceobj):
+
+        newaxis_list = [] # for reshaping self.data
+        ind_ellipse = None
+        num_newaxis = 0
+        num_slice = 0
+        for sl_ind, sl in enumerate(sliceobj):
+            if sl is None:
+                num_newaxis += 1
+            elif sl is Ellipsis:
+                ind_ellipse = sl_ind
+            else:
+                num_slice += 1
+            # singlet dimension is created
+            # numpy will remove that axis but we want to keep it
             if isinstance(sl, int):
                 newaxis_list.append(numpy.newaxis)
             else:
                 newaxis_list.append(slice(None))
-            if not numpy.isscalar(self.dims[iax].data):
+
+        # replace Ellipse with slice(None) such that len(sliceobj)
+        # equals self.data.ndim plus the number of numpy.newaxis
+        if ind_ellipse is not None:
+            slice_None = (slice(None),)*(self.data.ndim-num_newaxis-num_slice)
+            sliceobj = sliceobj[:ind_ellipse] + slice_None + \
+                       sliceobj[ind_ellipse+1:]
+
+        for iax, sl in enumerate(sliceobj):
+            if sl is None:
+                # numpy.newaxis is asked
+                # create a dummy dimension
+                self.dims.insert(iax, Dimension(data=numpy.nan))
+            else:
                 self.dims[iax] = self.dims[iax][sl]
-            # Make sure the dimension data is a numpy array
-            if numpy.isscalar(self.dims[iax].data):
-                self.dims[iax].data = numpy.array(
-                    [self.dims[iax].data,],
-                    dtype=self.dims[iax].data.dtype)
         if newaxis_list:
             self.data = self.data[newaxis_list]
+        # Make sure the dimensions still match
+        if not self.is_shape_matches_dims():
+            raise ValueError("Dimension mismatch.")
 
 
     def getLatitude(self):
@@ -1152,7 +1219,7 @@ class Variable(object):
 
         Args:
            N (int or float): size of the window
-                             if axis is int, N is treated as the number of 
+                             if axis is int, N is treated as the number of
                                  array elements along the axis
                              if axis is str, N is treated as the absolute value
                                  of the size of window on the axis
@@ -1279,7 +1346,7 @@ def nc_cal(func):
                         history=history)
     return newfun
 
-def wgt_ave(var, axis=None):
+def wgt_ave(var, axis=None, lat_weighted=True):
     '''A more general routine for averaging
 
     The method first reads the axes (x/y/z/t) needed for averaging,
@@ -1293,6 +1360,11 @@ def wgt_ave(var, axis=None):
 
     Arg:
         var (Variable)
+        axis (int/str/an iterable of int or str):
+            the dimension along which the average is computed
+        lat_weight (bool, default True): if an area average is involved, whether
+            a latitudinal weight based on a convergence of meridians is applied.
+            The Y axis is assumed to have unit=degree
 
     Optional args:
         axis (str or a list of str or int) - axis to be averaged over
@@ -1321,9 +1393,12 @@ def wgt_ave(var, axis=None):
     # apply varied lat_weights only if 'XY' are included
     caxes = [cartesian_axes[ax] for ax in axis]
     has_XY = 'X' in caxes and 'Y' in caxes
-    if has_XY:
+    if has_XY and lat_weighted:
         sliceobj = [numpy.newaxis if cax != 'Y' else slice(None)
                     for cax in cartesian_axes]
+        if "degree" not in var.getDim("Y").units:
+            logger.warning("Area mean is weighted by Y axis and Y is assumed"+\
+                            " to have unit=degreeN/degreeE")
         lat_weights = stat.lat_weights(var.getLatitude())[sliceobj]
     else:
         lat_weights = 1.
@@ -1371,7 +1446,7 @@ def wgt_sum(var, axis=None):
     '''
     var.ensureMasked()
     data = var.data
-    cartesian_axes = var.getCAxes()
+    caxes = var.getCAxes()
     dimnames = var.getDimnames()
     if axis is None:
         axis = range(len(dimnames))
@@ -1382,14 +1457,15 @@ def wgt_sum(var, axis=None):
     history = 'wgt_sum(axis='+','.join([str(ax) for ax in axis])+')'
     if type(axis) is str:
         axis = axis.upper()
-        axis = [cartesian_axes.index(ax) for ax in axis]
+        axis = [caxes.index(ax) for ax in axis]
 
-    weights = numpy.ones(data.shape, dtype=data.dtype)
-    has_Y = 'Y' in [cartesian_axes[iax] for iax in axis]
-    if has_Y:
+    has_XY = 'X' in caxes and 'Y' in caxes
+    if has_XY:
         sliceobj = [numpy.newaxis if cax != 'Y' else slice(None)
-                    for cax in cartesian_axes]
+                    for cax in caxes]
         weights = stat.lat_weights(var.getLatitude())[sliceobj]
+    else:
+        weights = 1.
 
     data = data*weights
     data = keepdims.sum(data, axis=axis)
