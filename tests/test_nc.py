@@ -1,10 +1,10 @@
 import os
 import importlib
-
 import unittest
-import numpy
 import functools
 import itertools
+
+import numpy
 import urllib
 
 import geodat.nc
@@ -31,7 +31,7 @@ def var_dummy(ntime,nlat,nlon):
                               varname="temp")
 
 
-def expectImportErrorUnlessModuleExists(module_name):
+def expect_import_error_unless_module_exists(module_name):
     ''' Runtime dependencies will lead to ImportError
     The library is supposed to check that and notify the
     user that a dependency is required for a function
@@ -52,7 +52,7 @@ def expectImportErrorUnlessModuleExists(module_name):
     return lambda test_func: test_func
 
 
-class Dummy(object):
+class DummyVariable(object):
     def __init__(self, varname=None, dims=None, attributes=None):
         if varname is not None:
             self.varname = varname
@@ -96,8 +96,11 @@ class NCVariableTestCase(unittest.TestCase):
         self.assertEqual(newvar.varname, self.var.varname)
         self.assertListEqual(newvar.dims, self.var.dims)
         newvar.attributes.pop("is_new");
-        # attributes are only equal if the new attributes is removed
         self.assertDictEqual(newvar.attributes, self.var.attributes)
+
+        # Inherit from a parent with new data, should complain about wrong shape
+        with self.assertRaisesRegexp(ValueError, "Dimension mismatch"):
+            newvar = geodat.nc.Variable(data=numpy.array(1.), parent=self.var)
 
         # dimension is not provided
         with self.assertRaises(AttributeError):
@@ -105,7 +108,7 @@ class NCVariableTestCase(unittest.TestCase):
                                         varname="tmp")
 
         # parent can be anything with the right attributes
-        newparent = Dummy(varname="tmp", dims=self.var.dims,
+        newparent = DummyVariable(varname="tmp", dims=self.var.dims,
                           attributes=dict(newparent="yes"))
         newvar = geodat.nc.Variable(data=numpy.ones_like(self.var.data),
                                     parent=newparent)
@@ -118,27 +121,27 @@ class NCVariableTestCase(unittest.TestCase):
                 newvar = geodat.nc.Variable(data=numpy.empty(10),
                                             parent=parent)
 
-        complain_about_parent(Dummy(varname="tmp", dims=self.var.dims),
+        complain_about_parent(DummyVariable(varname="tmp", dims=self.var.dims),
                               AttributeError)
-        complain_about_parent(Dummy(varname="tmp",
-                                    attributes=self.var.attributes),
+        complain_about_parent(DummyVariable(varname="tmp",
+                                            attributes=self.var.attributes),
                               AttributeError)
-        complain_about_parent(Dummy(dims=self.var.dims,
-                                    attributes=self.var.attributes),
+        complain_about_parent(DummyVariable(dims=self.var.dims,
+                                            attributes=self.var.attributes),
                               AttributeError)
 
         # if the attributes are of the wrong type, complain too
-        complain_about_parent(Dummy(varname=1, dims=self.var.dims,
-                                    attributes=self.var.attributes),
+        complain_about_parent(DummyVariable(varname=1, dims=self.var.dims,
+                                            attributes=self.var.attributes),
                               TypeError)
-        complain_about_parent(Dummy(varname="tmp", dims=self.var.dims[0],
-                                    attributes=self.var.attributes),
+        complain_about_parent(DummyVariable(varname="tmp", dims=self.var.dims[0],
+                                            attributes=self.var.attributes),
                               TypeError)
-        complain_about_parent(Dummy(varname="tmp", dims=[1,2,3],
-                                    attributes=self.var.attributes),
+        complain_about_parent(DummyVariable(varname="tmp", dims=[1,2,3],
+                                            attributes=self.var.attributes),
                               TypeError)
-        complain_about_parent(Dummy(varname="tmp", dims=self.var.dims,
-                                    attributes="bad_attribute"),
+        complain_about_parent(DummyVariable(varname="tmp", dims=self.var.dims,
+                                            attributes="bad_attribute"),
                               TypeError)
 
 
@@ -205,7 +208,7 @@ class NCVariableTestCase(unittest.TestCase):
         self.assertNotEqual(newvar.data.shape, self.var.data.shape)
 
 
-    @expectImportErrorUnlessModuleExists("netCDF4")
+    @expect_import_error_unless_module_exists("netCDF4")
     def test_getDate_special_calendar(self):
         '''Test if getDate functions properly with special calendars
         handled by netcdftime'''
@@ -360,7 +363,7 @@ class NCVariableTestCase(unittest.TestCase):
                                        self.var.data))
 
 
-    @expectImportErrorUnlessModuleExists("netCDF4")
+    @expect_import_error_unless_module_exists("netCDF4")
     def test_timeslices(self):
         nNDJF = sum(numpy.logical_or(self.var.getDate("m",True) >= 11,
                                      self.var.getDate("m",True) <= 2))
@@ -369,13 +372,13 @@ class NCVariableTestCase(unittest.TestCase):
                          nNDJF)
 
 
-    @expectImportErrorUnlessModuleExists("netCDF4")
+    @expect_import_error_unless_module_exists("netCDF4")
     def test_climatology(self):
         clim = geodat.nc.climatology(self.var)
         self.assertTrue(clim.dims[clim.getCAxes().index("T")].is_climo())
 
 
-    @expectImportErrorUnlessModuleExists("netCDF4")
+    @expect_import_error_unless_module_exists("netCDF4")
     def test_anomaly(self):
         clim = geodat.nc.climatology(self.var)
         anom = geodat.nc.anomaly(self.var, clim=clim)
@@ -385,9 +388,9 @@ class NCVariableTestCase(unittest.TestCase):
 
 
     def test_concatenate(self):
-        newvar = geodat.nc.concatenate([self.var[4], self.var[5]])
+        newvar = geodat.nc.concatenate([self.var[4], self.var[5:8]])
         self.assertTrue(numpy.allclose(newvar.getTime(),
-                                       self.var.getTime()[4:6]))
+                                       self.var.getTime()[4:8]))
 
 
     def test_conform_region(self):
@@ -398,7 +401,7 @@ class NCVariableTestCase(unittest.TestCase):
         self.assertTupleEqual(conform_region["lon"], regional_domain["X"])
 
 
-    @expectImportErrorUnlessModuleExists("pyferret")
+    @expect_import_error_unless_module_exists("pyferret")
     def test_conform_regrid(self):
         regional = self.var.getRegion(lat=(-40.,40.),lon=(100.,200.))
         conformed, regional = geodat.nc.conform_regrid(self.var, regional)
@@ -411,9 +414,13 @@ class NCVariableTestCase(unittest.TestCase):
     def test_is_monotonic(self):
         newvar = self.var.getRegion(lon=(100.,260.))
         self.assertTrue(newvar.dims[newvar.getCAxes().index("X")].is_monotonic())
+        # Special case when longitude can be negative passed the date line
+        lon_data = newvar.getDim("X").data
+        lon_data[lon_data>180.]-=360.
+        self.assertTrue(newvar.getDim("X").is_monotonic())
 
 
-    @expectImportErrorUnlessModuleExists("netCDF4")
+    @expect_import_error_unless_module_exists("netCDF4")
     def test_savefile(self):
         geodat.nc.savefile(self.IO_FILENAMES["TMP_FILENAME"], self.var)
         if os.path.exists(self.IO_FILENAMES["TMP_FILENAME"]):
@@ -443,13 +450,13 @@ class NCVariableTestCase(unittest.TestCase):
                              for varname in ["sstSON", "sstMAM", "sstDJF",
                                              "sstJJA"]]))
 
-    @expectImportErrorUnlessModuleExists("spharm")
+    @expect_import_error_unless_module_exists("spharm")
     def test_regrid_spharm(self):
         regridded = geodat.nc.regrid(self.var,nlat=100,nlon=120)
         self.assertAlmostEqual(float(regridded.wgt_ave().data), self.var_mean, 1)
 
 
-    @expectImportErrorUnlessModuleExists("pyferret")
+    @expect_import_error_unless_module_exists("pyferret")
     def test_regrid_pyferret(self):
         regridded = geodat.nc.pyferret_regrid(self.var[...,::2,::2], self.var)
         self.assertAlmostEqual(float(regridded.wgt_ave().data), self.var_mean, 1)
