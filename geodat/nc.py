@@ -1078,34 +1078,37 @@ class Variable(object):
     def _slicing_(self, sliceobj):
         ''' Perform the slicing operation on both the data and axes
         '''
+        ndim = self.data.ndim
         self.data = self.data[sliceobj]
 
-        newaxis_list = [] # for reshaping self.data
-        ind_ellipse = None
         num_newaxis = 0
-        num_slice = 0
-        for sl_ind, sl in enumerate(sliceobj):
+        num_ellipsis = 0
+        for sl in sliceobj:
             if sl is None:
                 num_newaxis += 1
-            elif sl is Ellipsis:
-                ind_ellipse = sl_ind
-            else:
-                num_slice += 1
-            # singlet dimension is created
-            # numpy will remove that axis but we want to keep it
-            if isinstance(sl, int):
-                newaxis_list.append(numpy.newaxis)
-            else:
-                newaxis_list.append(slice(None))
+            if sl is Ellipsis:
+                num_ellipsis += 1
 
-        # replace Ellipse with slice(None) such that len(sliceobj)
-        # equals self.data.ndim plus the number of numpy.newaxis
-        if ind_ellipse is not None:
-            slice_None = (slice(None),)*(self.data.ndim-num_newaxis-num_slice)
-            sliceobj = sliceobj[:ind_ellipse] + slice_None + \
-                       sliceobj[ind_ellipse+1:]
+        # replace Ellipsis with a number of slice(None) 
+        # such that len(sliceobj) = ndim + num_newaxis
+        # but subsequent Ellipsis should be replaced with one slice(None) only
+        # This list is only needed if there is any Ellipsis at all
+        slice_None = [[slice(None)]]*(num_ellipsis-1) + \
+                     [[slice(None)]*\
+                      (ndim+num_newaxis-len(sliceobj)+1)]
 
-        for iax, sl in enumerate(sliceobj):
+        new_sliceobj = []
+        for sl in sliceobj:
+            if sl is Ellipsis:
+                new_sliceobj += slice_None.pop()
+            else:
+                new_sliceobj.append(sl)
+
+        # for reshaping self.data
+        newaxis_list = [numpy.newaxis if isinstance(sl, int)
+                        else slice(None) for sl in new_sliceobj]
+
+        for iax, sl in enumerate(new_sliceobj):
             if sl is None:
                 # numpy.newaxis is asked
                 # create a dummy dimension
@@ -1114,6 +1117,7 @@ class Variable(object):
                 self.dims[iax] = self.dims[iax][sl]
         if newaxis_list:
             self.data = self.data[newaxis_list]
+
         # Make sure the dimensions still match
         if not self.is_shape_matches_dims():
             raise ValueError("Dimension mismatch.")

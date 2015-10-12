@@ -168,7 +168,7 @@ class NCVariableTestCase(unittest.TestCase):
         '''Test if geodat.nc.Variable can be sliced like a numpy array object'''
         self.assertEqual(self.var[:2, :3, :4].data.shape, (2, 3, 4))
 
-        sliced_var = self.var[2, :4, 4]
+        sliced_var = self.var[...,2]
 
         # Make sure the number of dimensions and their sizes matches
         self.assertTrue(sliced_var.is_shape_matches_dims())
@@ -176,15 +176,17 @@ class NCVariableTestCase(unittest.TestCase):
         # Singlet dimension should be maintained as well
         self.assertTrue(numpy.allclose(
             sliced_var.data,
-            self.var.data[2, :4, 4][numpy.newaxis, ..., numpy.newaxis]))
+            self.var.data[...,2][..., numpy.newaxis]))
 
+        sliced_var = self.var[...,2,:4]
         # Make sure the dimension values are as expected
-        self.assertEqual(sliced_var.getTime(),
-                         self.var.getTime()[2])
-        self.assertEqual(sliced_var.getLongitude(),
-                         self.var.getLongitude()[4])
-        self.assertTrue(numpy.allclose(sliced_var.getLatitude(),
-                                       self.var.getLatitude()[:4]))
+        self.assertTrue(numpy.allclose(sliced_var.getTime(),
+                                        self.var.getTime()))
+        self.assertEqual(sliced_var.getLatitude(),
+                         self.var.getLatitude()[2])
+        self.assertTrue(numpy.allclose(sliced_var.getLongitude(),
+                                       self.var.getLongitude()[:4]))
+
 
     def test_getSlice(self):
         '''Test if slice objects can be created properly using lat-lon ranges'''
