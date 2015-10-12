@@ -5,13 +5,28 @@ import scipy.stats.mstats
 import logging
 
 logger = logging.getLogger(__name__)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
 
 def lat_weights(lats):
+    ''' Returns cos(lats)
+
+    Required as a weighting for calculating areas on
+    a regular cartesian lat-lon grid in which meridians
+    converge.
+
+    Arguments:
+       lats (numpy ndarray): in degree
+
+    Returns:
+       numpy ndarray
+    '''
     wgts = numpy.cos(numpy.radians(lats))
     return wgts
 
-def runave(data,N,axis=0,step=None):
+
+def runave(data, N, axis=0, step=None):
     if isinstance(data, numpy.ma.core.MaskedArray):
         data = data.filled(numpy.nan)
     if step is None:
@@ -19,72 +34,76 @@ def runave(data,N,axis=0,step=None):
     else:
         if type(step) is not int:
             raise Exception("step should be an integer")
-        weights = numpy.array(([1.,]+[0.,]*(step-1))*(N-1)+[1.,])
+        weights = numpy.array(([1.]+[0.]*(step-1))*(N-1)+[1.])
     weights /= weights.sum()
-    return numpy.ma.masked_invalid(filters.convolve1d(data,weights,mode='constant',cval=numpy.nan,axis=axis))
+    return numpy.ma.masked_invalid(filters.convolve1d(
+        data, weights, mode='constant', cval=numpy.nan, axis=axis))
 
 
 def skewness(data):
+    ''' Essentially the same as scipy.stats.skewness '''
     if isinstance(data,numpy.ma.core.MaskedArray):
         npmod = numpy.ma
     else:
         npmod = numpy
-    return npmod.power(data - npmod.mean(data),3).mean()/npmod.power(npmod.var(data),3./2.)
+    return npmod.power(data-npmod.mean(data), 3).mean()/\
+        npmod.power(npmod.var(data), 3./2.)
 
 
-def resample_xy(x,y,xnew,nx,ny):
-    """ Given a pair of (x,y), resample the y based on the 
-    distribution of x and xnew
-    
-    Keyword Arguments:
-    x       -- numpy 1d array
-    y       -- numpy 1d array (shape should match x)
-    xnew    -- numpy 1d array (any length)
-    nx      -- integer
-        the number of bins applied to x
-    ny      -- integer
-        the number of bins applied to y
-    
-    Return:
-    ynew -- numpy 1d array of length = len(xnew)
-    
+def resample_xy(x, y, xnew, nx, ny):
+    """ Given paired values of (x,y), randomly sample a set of
+    values for ynew given an array xnew such that the joint distribution
+    of (xnew, ynew) reassembles that of (x,y)
+
+    Arguments:
+        x (numpy 1d array)
+        y (numpy 1d array): shape should match x
+        xnew (numpy 1d array)
+        nx (int) : the number of bins applied to x
+        ny (int) : the number of bins applied to y
+
+    Returns:
+        ynew (numpy 1d array): length = len(xnew)
     """
-    xedges = numpy.linspace(x.min(),x.max(),nx+1)
-    xnew_ibin = numpy.digitize(xnew,xedges)
+    xedges = numpy.linspace(x.min(), x.max(), nx+1)
+    xnew_ibin = numpy.digitize(xnew, xedges)
     y_cdf = {}
     y_mids = {}
-    ynew = numpy.empty_like(xnew,dtype=y.dtype)
-    for ix,ibin in enumerate(xnew_ibin):
+    ynew = numpy.empty_like(xnew, dtype=y.dtype)
+    for ix, ibin in enumerate(xnew_ibin):
         # If the xnew is out of bound, return numpy.nan for that entry
         if xnew[ix] >= xedges[-1] and xnew < xedges[0]:
-            logger.warn("Out of bound for x={:.2e}. Return numpy.nan.".format(float(xnew[ix])))
+            logger.warn("Out of bound for x={:.2e}. "+\
+                        "Return numpy.nan.".format(float(xnew[ix])))
             ynew[ix] = numpy.nan
             continue
-        
+
         # Don't compute the cdf twice for the same bin
         # Compute it once and save it
         if ibin not in y_cdf:
-            ys = y[(x>xedges[ibin-1]) & (x<=xedges[ibin])]
-            y_cdf[ibin],y_mids[ibin] = cdf(ys,bins=ny)
-        
+            ys = y[(x > xedges[ibin-1]) & (x <= xedges[ibin])]
+            y_cdf[ibin], y_mids[ibin] = cdf(ys,bins=ny)
+
+        # Keep drawing a new y until the drawn value is valid
         while True:
             rand_num = numpy.random.uniform()
             try:
-                ynew[ix] = scipy.interpolate.interp1d(y_cdf[ibin],y_mids[ibin])(rand_num)
+                ynew[ix] = scipy.interpolate.interp1d(
+                    y_cdf[ibin], y_mids[ibin])(rand_num)
                 break
             except ValueError:
                 pass
     return ynew
 
 
-def cdf(data,option="hist",**kwargs):
-    '''
+def cdf(data, option="hist", **kwargs):
+    ''' Under development
     data   -- numpy 1d array
     option -- "hist" or "empirical"
     '''
     if option.lower() == "hist":
         # Use histogram for cdf
-        h,x = numpy.histogram(data,**kwargs)
+        h, x = numpy.histogram(data,**kwargs)
         x_mid = 0.5*(x[1:]+x[:-1])
         h_cum = numpy.cumsum(h)
         return h_cum/float(h_cum[-1]), x_mid
