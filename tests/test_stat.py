@@ -29,10 +29,10 @@ class StatTestCase(unittest.TestCase):
 
     def test_lat_weights(self):
         x = numpy.arange(70.,80.)
-        answer = [ 0.342020143326, 0.325568154457, 0.309016994375,
-                   0.292371704723, 0.275637355817, 0.258819045103,
-                   0.2419218956, 0.224951054344, 0.207911690818,
-                   0.190808995377 ]
+        answer = [ 0.34202, 0.3255, 0.30901,
+                   0.29237, 0.2756, 0.25881,
+                   0.24192, 0.2249, 0.20791,
+                   0.19080 ]
         self.assertTrue(numpy.allclose(answer, geodat_stat.lat_weights(x),
                                        rtol=0.1))
 
