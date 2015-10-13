@@ -10,7 +10,7 @@ formatter = logging.Formatter(
 
 
 def lat_weights(lats):
-    ''' Returns cos(lats)
+    """ Returns cos(lats)
 
     Required as a weighting for calculating areas on
     a regular cartesian lat-lon grid in which meridians
@@ -21,12 +21,25 @@ def lat_weights(lats):
 
     Returns:
        numpy ndarray
-    '''
+    """
     wgts = numpy.cos(numpy.radians(lats))
     return wgts
 
 
 def runave(data, N, axis=0, step=None):
+    """ Compute a smooth box-car running average and masked
+    edge values using scipy.ndimage.filters.convolve1d
+
+    Args:
+       data (numpy array)
+       N (int) : width of the box car
+       axis (int): axis along which the average is computed
+                (See scipy.ndimage.filters.convolve1d)
+       step (optional, int): skips between the box car samples
+
+    Returns:
+       numpy masked array (same shape as data)
+    """
     if isinstance(data, numpy.ma.core.MaskedArray):
         data = data.filled(numpy.nan)
     if step is None:
@@ -41,7 +54,14 @@ def runave(data, N, axis=0, step=None):
 
 
 def skewness(data):
-    ''' Essentially the same as scipy.stats.skewness '''
+    """ Essentially the same as scipy.stats.skew or
+        scipy.stats.mstats.skew depending on the input
+
+    Input:
+        data (numpy array or masked array)
+    Returns:
+        numpy array or masked array
+    """
     if isinstance(data,numpy.ma.core.MaskedArray):
         npmod = numpy.ma
     else:
@@ -53,7 +73,7 @@ def skewness(data):
 def resample_xy(x, y, xnew, nx, ny):
     """ Given paired values of (x,y), randomly sample a set of
     values for ynew given an array xnew such that the joint distribution
-    of (xnew, ynew) reassembles that of (x,y)
+    of (xnew, ynew) resembles that of (x,y)
 
     Arguments:
         x (numpy 1d array)
@@ -65,6 +85,9 @@ def resample_xy(x, y, xnew, nx, ny):
     Returns:
         ynew (numpy 1d array): length = len(xnew)
     """
+    if y.shape != x.shape:
+        raise ValueError("shape of y should match the shape of x")
+
     xedges = numpy.linspace(x.min(), x.max(), nx+1)
     xnew_ibin = numpy.digitize(xnew, xedges)
     y_cdf = {}
@@ -72,7 +95,7 @@ def resample_xy(x, y, xnew, nx, ny):
     ynew = numpy.empty_like(xnew, dtype=y.dtype)
     for ix, ibin in enumerate(xnew_ibin):
         # If the xnew is out of bound, return numpy.nan for that entry
-        if xnew[ix] >= xedges[-1] and xnew < xedges[0]:
+        if xnew[ix] >= xedges[-1] or xnew[ix] < xedges[0]:
             logger.warn("Out of bound for x={:.2e}. "+\
                         "Return numpy.nan.".format(float(xnew[ix])))
             ynew[ix] = numpy.nan
@@ -96,18 +119,21 @@ def resample_xy(x, y, xnew, nx, ny):
     return ynew
 
 
-def cdf(data, option="hist", **kwargs):
-    ''' Under development
-    data   -- numpy 1d array
-    option -- "hist" or "empirical"
-    '''
-    if option.lower() == "hist":
-        # Use histogram for cdf
-        h, x = numpy.histogram(data,**kwargs)
-        x_mid = 0.5*(x[1:]+x[:-1])
-        h_cum = numpy.cumsum(h)
-        return h_cum/float(h_cum[-1]), x_mid
-    elif option.lower() == "empirical":
-        raise TypeError("Not yet implemented, sorry!")
-    else:
-        raise ValueError("option has to be either 'hist' or 'empirical'")
+def cdf(data, **kwargs):
+    """ Compute a histogram and the corresponding cumulative
+    frequency polygon.
+
+    Args:
+        data (numpy 1d array)
+        option (str): currently accepts "hist" only
+
+    Keyword arguments currently are passed to numpy.histogram
+
+    Returns:
+        bins, cdf : mid values of bins and the cumulative frequencies
+    """
+    # Use histogram for cdf
+    h, x = numpy.histogram(data,**kwargs)
+    x_mid = 0.5*(x[1:]+x[:-1])
+    h_cum = numpy.cumsum(h)
+    return h_cum/float(h_cum[-1]), x_mid

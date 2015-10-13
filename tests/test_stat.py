@@ -36,6 +36,33 @@ class StatTestCase(unittest.TestCase):
         self.assertTrue(numpy.allclose(answer, geodat_stat.lat_weights(x),
                                        rtol=0.1))
 
+    def test_resample_xy(self):
+        '''Test if resample_xy returns an array that has the shape requested.'''
+        # Shape is what is tested so far
+        # To test for the resemblance of the joint pdf requires larger sample
+        # and therefore would slow down tests
+        x = numpy.random.random(50)
+        y = numpy.random.random(40)
+        xnew = numpy.random.random(20)
+
+        with self.assertRaisesRegexp(ValueError, "shape of y should match"):
+            ynew = geodat_stat.resample_xy(x, y, xnew, 10, 10)
+
+        y = numpy.random.random(50)
+        ynew = geodat_stat.resample_xy(x, y, xnew, 10, 10)
+        self.assertTupleEqual(ynew.shape, xnew.shape)
+
+
+        def test_cdf(self):
+            x = numpy.arange(30)
+            a, b = geodat_stat.cdf(x)
+            a_ans = numpy.array([ 0.1, 0.2, 0.3, 0.4, 0.5, 0.6,
+                                  0.7, 0.8, 0.9, 1.0 ])
+            b_ans = numpy.array([ 1.45, 4.35, 7.25, 10.15, 13.05,
+                                  15.95, 18.85, 21.75, 24.65, 27.55 ])
+            self.assertTrue(numpy.allclose(a, a_ans, rtol=0.01))
+            self.assertTrue(numpy.allclose(b, b_ans, rtol=0.01))
+
 
 if __name__== "__main__":
     unittest.main(verbosity=2)

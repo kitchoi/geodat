@@ -19,7 +19,6 @@ install:
   - pip install coveralls
 
 script:
-  - python setup.py test
   - coverage run --source=geodat setup.py test
 
 after_success: coveralls
