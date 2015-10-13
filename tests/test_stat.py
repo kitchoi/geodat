@@ -48,6 +48,7 @@ class StatTestCase(unittest.TestCase):
         with self.assertRaisesRegexp(ValueError, "shape of y should match"):
             ynew = geodat_stat.resample_xy(x, y, xnew, 10, 10)
 
+        # Now x and y have the same shape
         y = numpy.random.random(50)
         ynew = geodat_stat.resample_xy(x, y, xnew, 10, 10)
         self.assertTupleEqual(ynew.shape, xnew.shape)
