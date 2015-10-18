@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import os
 import importlib
 import unittest
@@ -8,6 +10,40 @@ import numpy
 import urllib
 
 import geodat.nc
+
+TMP_FILE_NAME = "test_nc_tmp.nc"
+TEST_DATA_NAME = "tests/data/test_nc_data.nc"
+
+def test_data_exists(filename=TEST_DATA_NAME):
+    """Download data if test data does not exist
+
+    Returns:
+       boolean: True if the data exists or is successfully downloaded
+    """
+    if not os.path.exists(filename):
+        print("Test data not found.  Downloading...", end="")
+        # Create the test data directory if it does not exist
+        if not os.path.exists(os.path.dirname(filename)):
+            os.makedirs(os.path.dirname(filename))
+
+        # Download the data
+        try:
+            _, response = urllib.urlretrieve("http://kychoi.org/geodat_test_data/sst_parts.nc",
+                                             filename)
+        except IOError:
+            print("Failed. IOError during urllib")
+            return False
+
+        if "netcdf" not in response.gettype():
+            # Failed to download
+            if os.path.exists(filename):
+                os.remove(filename)
+            print("Failed")
+            return False
+
+        print("OK")  # Completed download
+    return True
+
 
 def var_dummy(ntime,nlat,nlon):
     month_day = 365.25/12.
@@ -38,9 +74,9 @@ def expect_import_error_unless_module_exists(module_name):
     '''
     def new_test_func(test_func):
         def new_func(testcase, *args, **kwargs):
-            print module_name+" cannot be imported and an ImportError "+\
-                "is expected to be raised by the code.  The module name "+\
-                "should be included in the error message"
+            print(module_name, "cannot be imported and an ImportError",
+                  "is expected to be raised by the code.  The module name ",
+                  "should be included in the error message")
             with testcase.assertRaisesRegexp(ImportError, module_name):
                 test_func(testcase, *args, **kwargs)
         return new_func
@@ -62,6 +98,8 @@ class DummyVariable(object):
             self.attributes = attributes
 
 
+
+
 class NCVariableTestCase(unittest.TestCase):
     def setUp(self):
         ''' Create a geodat.nc.Variable for testing '''
@@ -70,15 +108,11 @@ class NCVariableTestCase(unittest.TestCase):
         self.nlon = 60
         self.var = var_dummy(self.ntime, self.nlat, self.nlon)
         self.var_mean = self.var.data.mean()
-        # Define files for IO testing
-        self.IO_FILENAMES = dict(TMP_FILENAME = "test_nc_tmp.nc",
-                                 TEST_DATA_NAME = "tests/data/test_nc_data.nc")
-
 
     def tearDown(self):
-        if os.path.exists(self.IO_FILENAMES["TMP_FILENAME"]):
-            os.remove(self.IO_FILENAMES["TMP_FILENAME"])
-
+        # Delete temporary file if it exists
+        if os.path.exists(TMP_FILE_NAME):
+            os.remove(TMP_FILE_NAME)
 
     def test_var_setup(self):
         ''' Test the other ways of creating a Variable '''
@@ -287,7 +321,6 @@ class NCVariableTestCase(unittest.TestCase):
             dimname="time",
             attributes={"calendar":"standard"})
         # This should just get a warning and run okay
-        print "Expect a warning:"
         time_dim2.getDate("m")
         # This will throw an error
         with self.assertRaisesRegexp(RuntimeError, "not seem to be a monthly"):
@@ -424,33 +457,33 @@ class NCVariableTestCase(unittest.TestCase):
 
     @expect_import_error_unless_module_exists("netCDF4")
     def test_savefile(self):
-        geodat.nc.savefile(self.IO_FILENAMES["TMP_FILENAME"], self.var)
-        if os.path.exists(self.IO_FILENAMES["TMP_FILENAME"]):
-            os.remove(self.IO_FILENAMES["TMP_FILENAME"])
+        geodat.nc.savefile(TMP_FILE_NAME, self.var)
+        if os.path.exists(TMP_FILE_NAME):
+            os.remove(TMP_FILE_NAME)
 
 
+    @unittest.skipIf(not test_data_exists(),
+                     "Test data does not exist.  Failed to download.")
     def test_openfile(self):
         ''' Test opening file and extracting variables from netCDF files'''
-        test_data_name = self.IO_FILENAMES["TEST_DATA_NAME"]
-
-        # Download data if it does not exist
-        if not os.path.exists(test_data_name):
-            # Create the test data directory if it does not exist
-            if not os.path.exists(os.path.dirname(test_data_name)):
-                os.makedirs(os.path.dirname(test_data_name))
-            # Download the data
-            urllib.urlretrieve("http://kychoi.org/geodat_test_data/sst_parts.nc",
-                               test_data_name)
 
         # Check if a single variable can be extracted
-        var = geodat.nc.getvar(test_data_name, "sstMAM")
+        var = geodat.nc.getvar(TEST_DATA_NAME, "sstMAM")
         self.assertTupleEqual(var.data.shape, (3, 180, 360))
 
         # Check if all of the variables can be extracted
-        dataset = geodat.nc.dataset(test_data_name)
-        self.assertTrue(all([varname in dataset.keys()
-                             for varname in ["sstSON", "sstMAM", "sstDJF",
-                                             "sstJJA"]]))
+        dataset = geodat.nc.dataset(TEST_DATA_NAME)
+        expected = sorted(["sstSON", "sstMAM", "sstDJF", "sstJJA"])
+        self.assertListEqual(expected, sorted(dataset.keys()))
+
+        # Test overwriting loaded value
+        dataset = geodat.nc.dataset([TEST_DATA_NAME, TEST_DATA_NAME], "o")
+        self.assertListEqual(expected, sorted(dataset.keys()))
+
+        # Test skipping loaded value
+        dataset = geodat.nc.dataset([TEST_DATA_NAME, TEST_DATA_NAME], "s")
+        self.assertListEqual(expected, sorted(dataset.keys()))
+
 
     @expect_import_error_unless_module_exists("spharm")
     def test_regrid_spharm(self):
