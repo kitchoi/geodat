@@ -92,19 +92,22 @@ def getvar(filename, varname, *args, **kwargs):
     return Variable(netcdf.netcdf_file(filename), varname, *args, **kwargs)
 
 
-def dataset(filenames, result=None, *args, **kwargs):
+def dataset(filenames, append_code="s", *args, **kwargs):
     ''' Extract all variables in one file or more files
 
     Args:
         filenames (str or a list of str): Input files
+        append_code (str): what to do if when variable names clash;
+                 "o" for overwriting previously loaded variables;
+                 "r" for renaming newly loaded variable (will prompt for input)
+                 "s" to skip (default)
 
     Returns:
         dict: str and geodat.nc.Variable pairs
 
     Optional arguments accepted by geodat.nc.Variable can be used here
     '''
-    if result is None:
-        result = {}
+    result = {}
     if type(filenames) is not list:
         filenames = [filenames]
     for filename in filenames:
@@ -114,22 +117,23 @@ def dataset(filenames, result=None, *args, **kwargs):
                 # Do not add dimensions to the dataset
                 continue
             if result.has_key(varname):
-                print("{} alread loaded. ".format(varname)+\
-                      "Overwrite[o]/rename[r] or skip? ", end="")
-                append_code = sys.stdin.readline()
-                if append_code[0] == 'o':
+                print(varname, "alread loaded. ", end="")
+                if append_code.lower() == 'o':
+                    print("Overwriting.")
                     result[varname] = Variable(file_handle, varname,
                                                *args, **kwargs)
-                elif append_code[0] == 'r':
+                elif append_code.lower() == 'r':
                     print("Enter new name: ", end="")
                     newname = sys.stdin.readline()[:-1]
                     result[newname] = Variable(file_handle, varname,
                                                *args, **kwargs)
                     result[newname].varname = newname
-                else:
-                    print(["I am skipping the variable:",
-                                    varname, "in", filename])
+                elif append_code.lower() == "s":
+                    print("I am skipping the variable:", varname,
+                          "in", filename)
                     continue
+                else:
+                    raise ValueError("Invalid choice for append_code")
             else:
                 result[varname] = Variable(file_handle, varname,
                                            *args, **kwargs)
