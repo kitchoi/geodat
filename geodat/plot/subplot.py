@@ -50,8 +50,6 @@ def share_axis(axes,option,axis):
     axes - list of axes
     option - "row", "col" or "all"
     axis - "x" or "y"
-    A work-around to implement pylab.subplots(sharey="row") etc.
-    as expected.  
     '''
     import numpy
     if axis == "y":
@@ -80,13 +78,7 @@ def share_axis(axes,option,axis):
         for row in axes[1:]:
             for iax in range(ncols):
                 getaxis(row[iax]).join(row[iax],ax_cols[iax])
-    
-    def share_all(axes):
-        if type(axes[0]) is list:
-            axes = [ ax for row in axes for ax in row ]
-        for ax in axes[1:]:
-            getaxis(ax).join(ax,axes[0])
-    
+
     if option == "row":
         share_row(axes)
     elif option == "col":
