@@ -25,22 +25,26 @@ def integrate(data, axes=None, iax=None, **kwargs):
     # Perform integration
     return keepdims.sum(data*inc, axis=iax, **kwargs)
 
+
 def gradient(f, dx=1., axis=0, mask_boundary=False):
     '''Compute central difference for a pariticular axis
     Input:
     f - numpy ndarray
-    dx - spacing, as in numpy.gradient, currently assumed to be a scalar
+    dx - spacing
     '''
     if f.shape[axis] <= 1:
         raise ValueError("Length of axis {} must be >1".format(axis))
     result = numpy.ma.zeros(f.shape, dtype=f.dtype)
-    axis = numpy.mod(axis, f.ndim)
+    axis = axis % f.ndim
     sl_right = (slice(None),)*axis \
                 + (slice(2, None),) + (slice(None),)*(f.ndim-axis-1)
     sl_left = (slice(None),)*axis \
               + (slice(0, -2),) + (slice(None),)*(f.ndim-axis-1)
     sl_center = (slice(None),)*axis \
                 + (slice(1, -1),) + (slice(None),)*(f.ndim-axis-1)
+
+    # Make sure all dimension of dx have len>1
+    dx = dx.squeeze()
 
     # Broadcasting dx
     sl_dx_center = (numpy.newaxis,)*axis + (slice(1, -1),) \
@@ -87,7 +91,8 @@ def div(ux, uy, dx, dy, xaxis=-1, yaxis=-2):
     xaxis - integer indicating the location of x axis (default = -1)
     yaxis - integer indicating the location of y axis (default = -2)
     '''
-    result = gradient(ux, dx, axis=xaxis) + gradient(uy, dy, axis=yaxis)
+    result = gradient(ux, dx, axis=xaxis, mask_boundary=True) + \
+             gradient(uy, dy, axis=yaxis, mask_boundary=True)
     return result
 
 
