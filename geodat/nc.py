@@ -1093,7 +1093,7 @@ class Variable(object):
             if sl is Ellipsis:
                 num_ellipsis += 1
 
-        # replace Ellipsis with a number of slice(None) 
+        # replace Ellipsis with a number of slice(None)
         # such that len(sliceobj) = ndim + num_newaxis
         # but subsequent Ellipsis should be replaced with one slice(None) only
         # This list is only needed if there is any Ellipsis at all
@@ -1777,19 +1777,28 @@ def div(u, v, varname='div', long_name='divergence', **kwargs):
     Returns:
         geodat.nc.Variable
     '''
-    lon = numpy.radians(u.getLongitude())
+    # Longitude may be discontinuous at the dateline
+    lon = numpy.mod(u.getLongitude(), 360.)
+    lon = numpy.radians(lon)
     lat = numpy.radians(u.getLatitude())
-    xaxis = u.getCAxes().index('X')
-    yaxis = u.getCAxes().index('Y')
-    assert xaxis == v.getCAxes().index('X')
-    assert yaxis == v.getCAxes().index('Y')
+    xaxis = u.getIAxis('X')
+    yaxis = u.getIAxis('Y')
+    assert xaxis == v.getIAxis('X')
+    assert yaxis == v.getIAxis('Y')
     # dx,dy
     R = 6371000.
-    dx = numpy.cos(lat) * numpy.diff(lon)[0] * R  # a function of latitude
-    dx_slice = (numpy.newaxis,)*yaxis + (slice(None),) \
-                + (numpy.newaxis,)*(u.data.ndim-yaxis-1)
-    dx = dx[dx_slice]
-    dy = numpy.diff(lat)[0] * R
+    # New axis to match with lon
+    lat_newaxis_slice = (slice(None),)*xaxis + (numpy.newaxis,)
+    # New axis to match with lat
+    lon_newaxis_slice = (slice(None),)*yaxis + (numpy.newaxis,)
+
+    # a function of latitude
+    dx = numpy.cos(lat)[lat_newaxis_slice]*\
+         numpy.gradient(lon)[lon_newaxis_slice]*R
+    #dx_slice = (numpy.newaxis,)*yaxis + (slice(None),) \
+    #            + (numpy.newaxis,)*(u.data.ndim-yaxis-1)
+    #dx = dx[dx_slice]
+    dy = numpy.gradient(lat) * R
 
     return Variable(data=math.div(u.data, v.data, dx, dy, xaxis, yaxis),
                     varname=varname, parent=u, history='divergence',
@@ -2249,13 +2258,14 @@ def savefile(filename, listofvar, overwrite=False,
 
                 # check if the dimension has already been saved
                 isnewdim = dimnames[idim] not in ncfile.dimensions
-                if not isnewdim:  # the dimension name exists already
+
+                # the dimension name exists already and is not a record axis
+                if not isnewdim and idim != recordax:
                     olddim = ncfile.variables[dimnames[idim]]
                     # check if the dimensions are in fact the same one,
-                    # if not, create new dimension and rename it
-                    if not numpy.allclose(axes[idim], olddim[:]) and \
-                       idim != recordax:
-                        isnewdim = True
+                    # if not, it is a new dimension
+                    isnewdim = axes[idim].shape != olddim[:].shape or\
+                               (not numpy.allclose(axes[idim], olddim[:]))
 
                 # create new dimension
                 if isnewdim:
