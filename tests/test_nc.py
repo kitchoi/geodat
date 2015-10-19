@@ -28,8 +28,8 @@ def test_data_exists(filename=TEST_DATA_NAME):
 
         # Download the data
         try:
-            _, response = urllib.urlretrieve("http://kychoi.org/geodat_test_data/sst_parts.nc",
-                                             filename)
+            _, response = urllib.urlretrieve(
+                "http://kychoi.org/geodat_test_data/sst_parts.nc", filename)
         except IOError:
             print("Failed. IOError during urllib")
             return False
@@ -458,6 +458,18 @@ class NCVariableTestCase(unittest.TestCase):
     @expect_import_error_unless_module_exists("netCDF4")
     def test_savefile(self):
         geodat.nc.savefile(TMP_FILE_NAME, self.var)
+        geodat.nc.savefile(TMP_FILE_NAME, self.var, overwrite=True)
+        geodat.nc.savefile(TMP_FILE_NAME, self.var[0:2], recordax=0,
+                           overwrite=True)
+        geodat.nc.savefile(TMP_FILE_NAME, self.var[2:], recordax=0,
+                           appendall=True)
+        tmp_var = geodat.nc.getvar(TMP_FILE_NAME, self.var.varname)
+
+        # Verify
+        self.assertTrue(tmp_var.data.shape, self.var.varname)
+        self.assertTrue(numpy.allclose(tmp_var.data, self.var.data))
+
+        # Clean up
         if os.path.exists(TMP_FILE_NAME):
             os.remove(TMP_FILE_NAME)
 
@@ -540,6 +552,21 @@ class NCVariableTestCase(unittest.TestCase):
                                      self.var[1].squeeze()])
         self.assertEqual(actual.data.shape[0], 2)
         self.assertTrue(numpy.allclose(actual.dims[0].data, numpy.arange(1,3)))
+
+            
+    def test_div(self):
+        """ Test computing divergence """
+        actual = geodat.nc.div(self.var[0, :5, :4].squeeze(),
+                               self.var[1, :5, :4].squeeze())
+        expected = numpy.ma.empty((5,4), dtype=numpy.float)
+        expected[1:-1, 1:-1] = numpy.ma.array(
+            [[0.000170287289868, 0.000170287289868],
+             [0.000158612374383, 0.000158612374383],
+             [0.00015473153082, 0.00015473153082]])
+
+        expected[0, :] = expected[-1, :] = expected[:, 0] = expected[:, -1] = \
+                        numpy.ma.masked
+        self.assertTrue(numpy.ma.allclose(actual.data, expected, rtol=1e-5))
 
 
 if __name__== "__main__":

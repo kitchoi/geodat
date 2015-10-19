@@ -43,7 +43,7 @@ class StatTestCase(unittest.TestCase):
         # and therefore would slow down tests
         x = numpy.random.random(50)
         y = numpy.random.random(40)
-        xnew = numpy.random.random(20)
+        xnew = numpy.arange(0., 1., 0.1) # edges would be out of bound
 
         with self.assertRaisesRegexp(ValueError, "shape of y should match"):
             ynew = geodat_stat.resample_xy(x, y, xnew, 10, 10)
