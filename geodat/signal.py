@@ -65,9 +65,8 @@ def regress(y, x, axis=0, reverse=False):
             nd = y.shape[axis]
         nd *= numpy.ones([n for idim, n in enumerate(y.shape)
                           if idim != axis])
-        if isinstance(y, numpy.ma.core.MaskedArray):
-            if y.mask.any():
-                nd = (~y.mask).sum(axis=axis)
+        if isinstance(y, numpy.ma.core.MaskedArray) and y.mask.any():
+            nd = (~y.mask).sum(axis=axis)
         return nd
 
     sqrt_y2 = compute_sqrt_x2(y, axis=axis)
