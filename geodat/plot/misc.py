@@ -16,7 +16,8 @@ def contour_to_hatched_patches(cntrset, hatch_colors, hatch_patterns,
     '''
     patches_list = []
     for pathcollection in cntrset.collections:
-        patches_list.append([PathPatch(p1) for p1 in  pathcollection.get_paths()])
+        patches_list.append([PathPatch(p1)
+                             for p1 in  pathcollection.get_paths()])
         if remove_contour:
             pathcollection.remove()
 
@@ -30,13 +31,14 @@ def contour_to_hatched_patches(cntrset, hatch_colors, hatch_patterns,
             cntrset.ax.add_patch(p)
 
 
-def grouped_barboxplot(plot_option,group,keys1=None,keys2=None,
-                       group_names=None,bar_names=None,bar_colors=None,
-                       boxprops=None,boxplot_kwargs=None,legend_props=None,
-                       hatches=None,xticklabels_kwargs=None,
-                       bar_marks_funcs=(lambda ls: numpy.median(ls)-numpy.percentile(ls,25.),
-                                        lambda ls: numpy.median(ls),
-                                        lambda ls: numpy.percentile(ls,75.)-numpy.median(ls)),
+def grouped_barboxplot(plot_option,group, keys1=None, keys2=None,
+                       group_names=None, bar_names=None, bar_colors=None,
+                       boxprops=None, boxplot_kwargs=None, legend_props=None,
+                       hatches=None, xticklabels_kwargs=None,
+                       bar_marks_funcs=(
+                           lambda ls: numpy.median(ls)-numpy.percentile(ls,25.),
+                           lambda ls: numpy.median(ls),
+                           lambda ls: numpy.percentile(ls,75.)-numpy.median(ls)),
                        ecolors="k"):
     plot_option = plot_option.lower()
     assert plot_option == 'boxplot' or plot_option == 'bar'
@@ -46,7 +48,7 @@ def grouped_barboxplot(plot_option,group,keys1=None,keys2=None,
     # Make sure group is not empty
     assert len(group) > 0
     assert len(group.values()) > 0
-    
+
     if keys1 is None:
         keys1 = group.keys()
     if keys2 is None:
@@ -61,7 +63,7 @@ def grouped_barboxplot(plot_option,group,keys1=None,keys2=None,
         assert all([ name in bar_names.keys() for name in keys2 ])
     if bar_colors is not None:
         assert len(bar_colors) == len(keys2)
-    
+
     ind = numpy.arange(len(keys1))  # the x locations for the groups
     nbars = len(keys2)
     width = 1./(nbars+1)       # the width of the bars
@@ -69,7 +71,7 @@ def grouped_barboxplot(plot_option,group,keys1=None,keys2=None,
         bar_labels = [ bar_names[bar_name] for bar_name in keys2 ]
     else:
         bar_labels = keys2
-    
+
     if plot_option == 'boxplot':
         for igp,key1 in enumerate(keys1):
             for ibar,key2 in enumerate(keys2):
@@ -82,9 +84,10 @@ def grouped_barboxplot(plot_option,group,keys1=None,keys2=None,
                 if boxplot_kwargs is None:
                     boxplot_kwargs = {}
                 # if the value is a list or tuple, find the mean and standard deviation
-                if isinstance(value,list) or isinstance(value,tuple):
-                    boxplots = pylab.boxplot(value,positions=[ind[igp]+ibar*width,],
-                                             patch_artist=True,**boxplot_kwargs)
+                if isinstance(value, (list, tuple)):
+                    boxplots = pylab.boxplot(value,
+                                             positions=[ind[igp]+ibar*width,],
+                                             patch_artist=True, **boxplot_kwargs)
                     boxplots['boxes'][0].set(**box_kwargs)
                 else:
                     pylab.scatter(ind[igp]+ibar*width, value,)
@@ -92,9 +95,9 @@ def grouped_barboxplot(plot_option,group,keys1=None,keys2=None,
         # Default colors
         boxcolors = ['b',]*len(keys2)
         # Customed colors
-        if boxprops:
-            if 'color' in boxprops:
-                boxcolors = [ boxprops['color'][ibar] for ibar in range(len(keys2)) ]
+        if boxprops and 'color' in boxprops:
+            boxcolors = [boxprops['color'][ibar]
+                         for ibar in range(len(keys2))]
         rects = []
         for ibar, bar_label in enumerate(bar_labels):
             rects.append(pylab.gca().add_patch(pylab.Rectangle((0.1,0.2),0,0,color=boxcolors[ibar],label=bar_label)))
