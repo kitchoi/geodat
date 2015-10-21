@@ -70,7 +70,7 @@ def skewness(data):
         npmod.power(npmod.var(data), 3./2.)
 
 
-def resample_xy(x, y, xnew, nx, ny):
+def resample_xy(x, y, xnew, nx, ny, y_always_valid=True):
     """ Given paired values of (x,y), randomly sample a set of
     values for ynew given an array xnew such that the joint distribution
     of (xnew, ynew) resembles that of (x,y)
@@ -81,6 +81,7 @@ def resample_xy(x, y, xnew, nx, ny):
         xnew (numpy 1d array)
         nx (int) : the number of bins applied to x
         ny (int) : the number of bins applied to y
+        y_always_valid (bool): keep drawingn from the cdf until y is valid
 
     Returns:
         ynew (numpy 1d array): length = len(xnew)
@@ -115,7 +116,11 @@ def resample_xy(x, y, xnew, nx, ny):
                     y_cdf[ibin], y_mids[ibin])(rand_num)
                 break
             except ValueError:
-                pass
+                if y_always_valid:
+                    continue
+                else:
+                    ynew[ix] = numpy.nan
+                    break
     return ynew
 
 
