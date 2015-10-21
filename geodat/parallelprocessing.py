@@ -1,4 +1,8 @@
 import multiprocessing
+import logging
+
+logging.basicConfig(levels=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 def put_func_to_queue(func,job_name,queue):
     ''' A decorator for submitting job to queue
@@ -34,18 +38,22 @@ def run_in_parallel(func):
 def extract_output(ps,queue_output,timeout=None):
     ''' Extract the output from run_in_parallel
     in the order when the job is declared and submitted
+
     Return : list
     '''
     results = []
     for p in ps:
         results.append(queue_output.get(timeout=timeout))
+
     # empty all processes
     while ps:
         ps.pop().join()
+
     try:
-        indices,results =  zip(*sorted(results,key=lambda a: a[0]))
+        indices, results =  zip(*sorted(results, key=lambda a: a[0]))
     except ValueError:
-        # No result is returned
+        logger.warning("extract_output: No result is returned "+\
+                       "from the processes")
         pass
     return list(results)
 
