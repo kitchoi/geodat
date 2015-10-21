@@ -98,6 +98,7 @@ def regrid(lon_in,lat_in,data,nlon_o,nlat_o):
 
 def regional2global(data,lon_in,lat_in):
     # expand the domain for the input data
+    # Under development
     dlat = numpy.diff(lat_in).mean()
     dlon = numpy.diff(lon_in).mean()
     nlat = int(180./dlat)
