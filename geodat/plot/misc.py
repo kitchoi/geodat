@@ -34,9 +34,9 @@ def grouped_barboxplot(plot_option,group,keys1=None,keys2=None,
                        group_names=None,bar_names=None,bar_colors=None,
                        boxprops=None,boxplot_kwargs=None,legend_props=None,
                        hatches=None,xticklabels_kwargs=None,
-                       bar_marks_funcs=[lambda ls: numpy.median(ls)-numpy.percentile(ls,25.),
+                       bar_marks_funcs=(lambda ls: numpy.median(ls)-numpy.percentile(ls,25.),
                                         lambda ls: numpy.median(ls),
-                                        lambda ls: numpy.percentile(ls,75.)-numpy.median(ls)],
+                                        lambda ls: numpy.percentile(ls,75.)-numpy.median(ls)),
                        ecolors="k"):
     plot_option = plot_option.lower()
     assert plot_option == 'boxplot' or plot_option == 'bar'
