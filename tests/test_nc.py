@@ -14,7 +14,8 @@ import geodat.nc
 TMP_FILE_NAME = "test_nc_tmp.nc"
 TEST_DATA_NAME = "tests/data/test_nc_data.nc"
 
-def test_data_exists(filename=TEST_DATA_NAME):
+
+def does_test_data_exist(filename):
     """Download data if test data does not exist
 
     Returns:
@@ -96,7 +97,6 @@ class DummyVariable(object):
             self.dims = dims
         if attributes is not None:
             self.attributes = attributes
-
 
 
 
@@ -466,15 +466,31 @@ class NCVariableTestCase(unittest.TestCase):
         tmp_var = geodat.nc.getvar(TMP_FILE_NAME, self.var.varname)
 
         # Verify
-        self.assertTrue(tmp_var.data.shape, self.var.varname)
+        self.assertTrue(tmp_var.data.shape, self.var.data.shape)
         self.assertTrue(numpy.allclose(tmp_var.data, self.var.data))
+
+        geodat.nc.savefile(TMP_FILE_NAME, self.var, overwrite=True)
+        newvar = self.var[10:]
+        newvar.varname="temp2"
+        geodat.nc.savefile(TMP_FILE_NAME, newvar, appendall=True)
+        tmp_var = geodat.nc.getvar(TMP_FILE_NAME, self.var.varname)
+        tmp_var2 = geodat.nc.getvar(TMP_FILE_NAME, "temp2")
+
+        # Verify
+        self.assertTrue(tmp_var.data.shape, self.var.data.shape)
+        self.assertTrue(tmp_var.varname, "temp")
+        self.assertTrue(tmp_var.getDimnames()[0], "time")
+
+        self.assertTrue(tmp_var2.data.shape, self.var.data[10:].shape)
+        self.assertTrue(tmp_var2.varname, "temp2")
+        self.assertTrue(tmp_var2.getDimnames()[0], "time1")
 
         # Clean up
         if os.path.exists(TMP_FILE_NAME):
             os.remove(TMP_FILE_NAME)
 
 
-    @unittest.skipIf(not test_data_exists(),
+    @unittest.skipIf(not does_test_data_exist(TEST_DATA_NAME),
                      "Test data does not exist.  Failed to download.")
     def test_openfile(self):
         ''' Test opening file and extracting variables from netCDF files'''
