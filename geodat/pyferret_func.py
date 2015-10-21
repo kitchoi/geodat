@@ -12,11 +12,11 @@ logger = logging.getLogger(__name__)
 
 try:
     import pyferret
-    _PYFERRET_INSTALLED = True
+    PYFERRET_INSTALLED = True
     _IMPORT_PYFERRET_ERROR = None
 except ImportError:
     logger.warning("Failed to load pyferret.")
-    _PYFERRET_INSTALLED = False
+    PYFERRET_INSTALLED = False
     _IMPORT_PYFERRET_ERROR = ImportError("Failed to load pyferret")
 
 
@@ -47,7 +47,7 @@ def num2fer(data, coords, dimunits,
     to agree with the number of dimensions of data
 
     '''
-    if not _PYFERRET_INSTALLED:
+    if not PYFERRET_INSTALLED:
         raise _IMPORT_PYFERRET_ERROR
 
     if len(dimunits) != data.ndim:
@@ -124,7 +124,7 @@ def fer2num(var):
            'dimunits': a list of strings, the units for the dimensions,
            'dimnames': a list of strings, the names for the dimensions}
     '''
-    if not _PYFERRET_INSTALLED:
+    if not PYFERRET_INSTALLED:
         raise _IMPORT_PYFERRET_ERROR
 
     results = {}
@@ -185,7 +185,7 @@ def regrid_once_primitive(var, ref_var, axis,
     Returns:
         dict
     '''
-    if not _PYFERRET_INSTALLED:
+    if not PYFERRET_INSTALLED:
         raise _IMPORT_PYFERRET_ERROR
 
     pyferret.start(quiet=True, journal=verbose,
@@ -215,7 +215,7 @@ def regrid_once_primitive(var, ref_var, axis,
     source_fer = num2fer(varname="source", **var)
 
     # Fill in unnecessary input for Ferret
-    if not ref_var.has_key('data'):
+    if "data" not in ref_var:
         ref_var['data'] = numpy.zeros((1,)*len(ref_var['coords']))
 
     # Construct the destination data read by pyferret.putdata
@@ -244,7 +244,7 @@ def regrid_once_primitive(var, ref_var, axis,
     if verbose: print "Get data from FERRET"
     # Convert from ferret data structure to geodat.nc.Variable
     tmp_result = fer2num(result_ref)
-    if var.has_key('varname'):
+    if 'varname' in var:
         tmp_result['varname'] = var['varname']
     tmp_caxes = [geodat.units.assign_caxis(dimunit)
                  for dimunit in tmp_result['dimunits']]
@@ -256,7 +256,7 @@ def regrid_once_primitive(var, ref_var, axis,
     # Change the dimension order of the result to match with the input
     tmp_result['coords'] = [tmp_result['coords'][iax] for iax in neworder]
     tmp_result['dimunits'] = [tmp_result['dimunits'][iax] for iax in neworder]
-    if tmp_result.has_key('dimnames'):
+    if 'dimnames' in tmp_result:
         tmp_result['dimnames'] = [tmp_result['dimnames'][iax]
                                   for iax in neworder]
     tmp_result['data'] = tmp_result['data'].transpose(neworder).astype(
