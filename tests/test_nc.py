@@ -101,6 +101,7 @@ class DummyVariable(object):
 
 
 class NCVariableTestCase(unittest.TestCase):
+    ''' Test case for the geodat.nc module '''
     def setUp(self):
         ''' Create a geodat.nc.Variable for testing '''
         self.ntime = 24

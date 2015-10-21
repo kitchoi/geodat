@@ -6,6 +6,7 @@ import scipy.stats as scipy_stats
 import geodat.stat as geodat_stat
 
 class StatTestCase(unittest.TestCase):
+    ''' Test case for the geodat.stat module '''
     def test_skewness(self):
         '''Test if stat.skewness gives the same results as scipy.stats.skew'''
         x = numpy.arange(20.)
