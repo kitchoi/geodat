@@ -313,21 +313,20 @@ class Dimension(object):
         strict_monotonic_func = lambda data: (numpy.diff(data) > 0.).all() or \
                                 (numpy.diff(data) < 0.).all()
         strict_monotonic = strict_monotonic_func(self.data)
-        if not strict_monotonic:
+        if not strict_monotonic and self.getCAxis() == 'X':
             # Make sure it is not because of periodic boundary condition
             # of longitude
-            if self.getCAxis() == 'X':
-                x_diff = numpy.diff(self.data)
-                if sum(x_diff > 0.) > sum(x_diff < 0.):
-                    # More often increasing
-                    # Roll backward
-                    return strict_monotonic_func(
-                        numpy.roll(self.data, (numpy.argmin(x_diff)+1)*-1))
-                else:
-                    # More often decreasing
-                    # Roll forward
-                    return strict_monotonic_func(
-                        numpy.roll(self.data, numpy.argmin(x_diff)+1))
+            x_diff = numpy.diff(self.data)
+            if sum(x_diff > 0.) > sum(x_diff < 0.):
+                # More often increasing
+                # Roll backward
+                return strict_monotonic_func(
+                    numpy.roll(self.data, (numpy.argmin(x_diff)+1)*-1))
+            else:
+                # More often decreasing
+                # Roll forward
+                return strict_monotonic_func(
+                    numpy.roll(self.data, numpy.argmin(x_diff)+1))
         return strict_monotonic
 
 
@@ -2235,7 +2234,8 @@ def savefile(filename, listofvar, overwrite=False,
                                   format='NETCDF3_CLASSIC')
     else:
         # Append existing file
-        assert appendall and os.path.exists(filename)
+        assert appendall
+        assert os.path.exists(filename)
         ncfile = _netCDF4_Dataset(filename, 'a',
                                   format='NETCDF3_CLASSIC')
 
