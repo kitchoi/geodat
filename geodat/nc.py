@@ -116,7 +116,7 @@ def dataset(filenames, append_code="s", *args, **kwargs):
             if varname in file_handle.dimensions:
                 # Do not add dimensions to the dataset
                 continue
-            if result.has_key(varname):
+            if varname in result:
                 print(varname, "alread loaded. ", end="")
                 if append_code.lower() == 'o':
                     print("Overwriting.")
@@ -618,7 +618,7 @@ class Variable(object):
                 return None
             self.data = getattr(varobj, "data", None)
             self.dims = [Dimension(reader.variables[dim], dim)
-                         if reader.variables.has_key(dim)
+                         if dim in reader.variables
                          else Dimension(reader.dimensions[dim], dim)
                          for dim in varobj.dimensions]
             self.attributes.update(varobj.__dict__['_attributes'])
@@ -754,8 +754,7 @@ class Variable(object):
         In the order of dimension
         '''
         axes = []
-        for idim in range(len(self.dims)):
-            dim = self.dims[idim]
+        for idim, dim in enumerate(self.dims):
             if dim.data is None:
                 dim.data = numpy.arange(1, self.data.shape[idim]+1)
             axis = dim.data
@@ -984,7 +983,7 @@ class Variable(object):
     def __getitem__(self, sliceobj):
         a = Variable(data=self.data, varname=self.varname, parent=self)
         sliceobj = numpy.index_exp[sliceobj]
-        a._slicing_(sliceobj)
+        a.slicing(sliceobj)
         a.addHistory('__getitem__['+str(sliceobj)+']')
         return a
 
@@ -1020,7 +1019,7 @@ class Variable(object):
         Example: variable.getSlice(lat=(-30.,30.))
         '''
         region = _general_region(kwargs)
-        if len(region) > 0:
+        if region:
             return self._create_slice_(region)
         else:
             return None
@@ -1030,8 +1029,8 @@ class Variable(object):
         This function slices the data.
         '''
         region = _general_region(kwargs)
-        if len(region) > 0:
-            self._slicing_(self._create_slice_(region))
+        if region:
+            self.slicing(self._create_slice_(region))
             self.addHistory('setRegion('+str(region)+')')
         return self
 
@@ -1079,8 +1078,13 @@ class Variable(object):
         return sliceobj
 
 
-    def _slicing_(self, sliceobj):
+    def slicing(self, sliceobj):
         ''' Perform the slicing operation on both the data and axes
+
+        Args:
+           sliceobj (tuple): slice object
+
+        Returns: None
         '''
         ndim = self.data.ndim
         self.data = self.data[sliceobj]
@@ -1900,14 +1904,14 @@ def conform_region(*args):
         raise Exception("Expect more than one domain in conform_region")
 
     args = list(args)
-    for i in range(len(args)):
+    for iarg, arg in enumerate(args):
         # For backward compatibility, get the domains for Variable inputs
         try:
-            argdomain = args[i].getDomain()
+            argdomain = arg.getDomain()
         except AttributeError:
-            argdomain = args[i]
+            argdomain = arg
         # Generalise the form of the dictionary
-        args[i] = _general_region(argdomain)
+        args[iarg] = _general_region(argdomain)
 
     minlon = max([domain.get('X', (numpy.inf*-1, numpy.inf))[0]
                   for domain in args])
@@ -1977,7 +1981,7 @@ def fer2var(var):
     Returns:
         geodat.nc.Variable
     '''
-    if not pyferret_func._PYFERRET_INSTALLED:
+    if not pyferret_func.PYFERRET_INSTALLED:
         raise ImportError("No pyferret installed")
 
     result = pyferret_func.fer2num(var)
@@ -2003,7 +2007,7 @@ def var2fer(var, name=None):
     Returns:
         dict: to be used by pyferret.putdata
     '''
-    if not pyferret_func._PYFERRET_INSTALLED:
+    if not pyferret_func.PYFERRET_INSTALLED:
         raise ImportError("No pyferret installed")
 
     num_input = _var_to_num_input(var)
@@ -2055,7 +2059,7 @@ def pyferret_regrid(var, ref_var=None, axis='XY', nlon=None, nlat=None,
 
     .. _Ferret doc: http://ferret.pmel.noaa.gov/Ferret/documentation/users-guide
     '''
-    if not pyferret_func._PYFERRET_INSTALLED:
+    if not pyferret_func.PYFERRET_INSTALLED:
         raise ImportError("No pyferret installed")
 
     if ref_var is None:
@@ -2067,16 +2071,18 @@ def pyferret_regrid(var, ref_var=None, axis='XY', nlon=None, nlat=None,
             raise Exception('''ref_var not given and therefore assumed
             regridding in the XY direction.
             The axis/axes you chose:'''+str(axis))
+
         # Create latitude and longitude using the sphere_grid and spharm modules
         lon, lat = grid_func.grid_degree(NY=nlat, NX=nlon)
         lon = Dimension(data=lon, units="degrees_E", dimname="lon")
         lat = Dimension(data=lat, units="degrees_N", dimname="lat")
+
         # Create new dimensions
         dims = []
-        for idim in range(len(var.dims)):
-            if var.getCAxes()[idim] == 'X':
+        for idim, cax in enumerate(var.getCAxes()):
+            if cax == 'X':
                 dims.insert(idim, lon)
-            elif var.getCAxes()[idim] == 'Y':
+            elif cax == 'Y':
                 dims.insert(idim, lat)
             else:
                 dims.insert(idim, var.dims[idim])
@@ -2249,19 +2255,19 @@ def savefile(filename, listofvar, overwrite=False,
             # Save dimension arrays
             dimnames = var.getDimnames()
             axes = var.getAxes()
-            for idim in range(len(var.dims)):
+
+            for idim, dimname in enumerate(dimnames):
                 if idim == recordax:
                     dimsize = None
                 else:
-                    #dimsize = var.dims[idim].data.size
                     dimsize = var.data.shape[idim]
 
                 # check if the dimension has already been saved
-                isnewdim = dimnames[idim] not in ncfile.dimensions
+                isnewdim = dimname not in ncfile.dimensions
 
                 # the dimension name exists already and is not a record axis
                 if not isnewdim and idim != recordax:
-                    olddim = ncfile.variables[dimnames[idim]]
+                    olddim = ncfile.variables[dimname]
                     # check if the dimensions are in fact the same one,
                     # if not, it is a new dimension
                     isnewdim = axes[idim].shape != olddim[:].shape or\
@@ -2273,7 +2279,7 @@ def savefile(filename, listofvar, overwrite=False,
                     # collision within the file
                     dimsuffix = ''
                     newDcount = 0
-                    while dimnames[idim]+dimsuffix in ncfile.dimensions:
+                    while dimname+dimsuffix in ncfile.dimensions:
                         newDcount += 1
                         dimsuffix = str(newDcount)
 
@@ -2419,7 +2425,7 @@ def UseMapplot(f_pylab):
 
         Args:
             variable (geodat.nc.Variable): should be 2D (singlet dimension will
-                be removed localling in this function)
+                be removed when calling in this function)
             basemap_kwargs (dict): optional.  If provided, it is parsed to
                 mpl_toolkits.basemap.Basemap while setting up the map
 
@@ -2432,22 +2438,25 @@ def UseMapplot(f_pylab):
         If the dimensions are not recognized as latitudes and longitudes, no map
         is made; f_pylab(x,y,data) is called and its output(s) are returned
         '''
+        basemap_kwargs = kwargs.get("basemap_kwargs", None)
+
         # args needed for quiver
         args = list(args)
-        for i in range(len(args)):
-            try:
-                args[i] = args[i].data.squeeze()
-            except AttributeError:
-                pass
+
+        # Squeeze variable input
+        for iarg, arg in enumerate(args):
+            if hasattr(arg, "squeeze"):
+                args[iarg] = arg.squeeze()
+            if isinstance(args[iarg], Variable):
+                args[iarg] = arg.data
+
         var_squeeze = variable.squeeze()
         caxes = var_squeeze.getCAxes()
         data = var_squeeze.data
-        if kwargs.has_key("basemap_kwargs"):
-            basemap_kwargs = kwargs.pop("basemap_kwargs")
-        else:
-            basemap_kwargs = None
+
         if len(caxes) != 2:
             raise Exception('UseMapplot is supposed to be used on 2D data')
+
         if 'X' in caxes and 'Y' in caxes:
             # Lat-Lon plot
             lons = variable.getLongitude()
@@ -2459,11 +2468,10 @@ def UseMapplot(f_pylab):
             # Z axis is prefered as the vertical axis
             # and the data needs to be transposed
             data = data.T
-            for i in range(len(args)):
-                try:
-                    args[i] = args[i].T
-                except AttributeError:
-                    pass
+            for iarg, arg in enumerate(args):
+                if hasattr(arg, "T"):
+                    args[iarg] = arg.T
+
         y, x = var_squeeze.getAxes()
         return f_pylab(x, y, data, *args, **kwargs)
     return plot_func
