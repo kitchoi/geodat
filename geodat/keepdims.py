@@ -33,18 +33,23 @@ def keepdims(f):
     def new_f_axes(arr,axis,*args,**kwargs):
         # dimensions of array
         ndims = arr.ndim
+
         # Rewrite negative indices to positive ones, and sort them
         axis = sorted({ax % ndims for ax in axis})
         nravel = len(axis)
+
         # new axis order
         newaxorder = [ i for i in range(axis[-1]) if i not in axis ]
         numaxfront = len(newaxorder)
         newaxorder += axis + [ i for i in range(numaxfront+nravel,ndims) ]
+
         # Do transpose
         arr = numpy.transpose(arr,newaxorder)
+
         # Reshape
         arr = arr.reshape(arr.shape[:numaxfront] + (-1,)
                             + arr.shape[numaxfront+nravel:])
+
         # apply the function
         result = new_f(arr,numaxfront,*args,**kwargs)
         if numpy.isscalar(result):
@@ -69,6 +74,7 @@ def keepdims(f):
         else:
             func = new_f_axes
         result = func(arr,axis,*args,**kwargs)
+
         # Propagate mask if kwargs['progMask'] is True
         if kwargs.get('progMask',False):
             if isinstance(arr,numpy.ma.core.MaskedArray) and \
@@ -82,12 +88,10 @@ def keepdims(f):
                     warnings.warn('ValueError while propaging mask.')
                     pass
 
-        # Try to preserve fill value
+        # Preserve fill value
         if isinstance(arr,numpy.ma.core.MaskedArray):
-            try:
-                result.set_fill_value(arr.fill_value)
-            except:
-                pass
+            result.set_fill_value(arr.fill_value)
+
         return result
     return new_f_dispatch
 
