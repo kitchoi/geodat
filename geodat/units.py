@@ -25,4 +25,4 @@ def assign_caxis(dimunit):
     invaxunits = {unit.lower():ax
                   for ax, units in conventions.items()
                   for unit in units}
-    return invaxunits.get(dimunit.lower(), None)
+    return invaxunits.get(dimunit.lower())
