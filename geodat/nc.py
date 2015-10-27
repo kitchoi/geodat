@@ -2438,7 +2438,7 @@ def UseMapplot(f_pylab):
         If the dimensions are not recognized as latitudes and longitudes, no map
         is made; f_pylab(x,y,data) is called and its output(s) are returned
         '''
-        basemap_kwargs = kwargs.get("basemap_kwargs", None)
+        basemap_kwargs = kwargs.pop("basemap_kwargs", None)
 
         # args needed for quiver
         args = list(args)
