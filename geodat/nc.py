@@ -1111,10 +1111,6 @@ class Variable(object):
             else:
                 new_sliceobj.append(sl)
 
-        # for reshaping self.data
-        newaxis_list = [numpy.newaxis if isinstance(sl, int)
-                        else slice(None) for sl in new_sliceobj]
-
         for iax, sl in enumerate(new_sliceobj):
             if sl is None:
                 # numpy.newaxis is asked
@@ -1122,6 +1118,12 @@ class Variable(object):
                 self.dims.insert(iax, Dimension(data=numpy.nan))
             else:
                 self.dims[iax] = self.dims[iax][sl]
+
+        # If slice is an integer, numpy would squeeze the array
+        # Add the singlet dimension back
+        newaxis_list = [numpy.newaxis if isinstance(sl, int)
+                        else slice(None) for sl in new_sliceobj]
+
         if newaxis_list:
             self.data = self.data[newaxis_list]
 
