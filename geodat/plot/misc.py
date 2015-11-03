@@ -41,7 +41,7 @@ def grouped_barboxplot(plot_option,group, keys1=None, keys2=None,
                            lambda ls: numpy.percentile(ls,75.)-numpy.median(ls)),
                        ecolors="k"):
     plot_option = plot_option.lower()
-    assert plot_option == 'boxplot' or plot_option == 'bar'
+    assert plot_option in ['boxplot', 'bar']
     # Make sure group is a dictionary of dictionary
     assert isinstance(group,dict)
     assert all([ isinstance(bars,dict) for bars in group.values() ])
@@ -160,10 +160,20 @@ def reorderlegend(orderedlegend=None):
 
 
 def bar_plot(xlabel=None,y=None,data=None,**kwargs):
-    if data is not None:
-        if type(data) is dict:
-            xlabel = data.keys()
-            y = data.values()
+    ''' Shortcut for making multiple bar_plot with xlabel
+
+    Args:
+       xlabel (list of str): x axis labels
+       y (numpy array): values for bar plot
+       data (dict): keys as xlabel, values as y
+
+    Other keyword arguments go to set_xticklabels
+    '''
+    if data is not None and type(data) is dict:
+        xlabel = data.keys()
+        y = data.values()
+    if y is None:
+        raise ValueError("y is not provided manually or from data")
     xloc = numpy.arange(len(y))+1.
     pylab.bar(xloc,y,label='_nolegend_',align='center')
     pylab.gca().set_xticks(xloc)
