@@ -136,7 +136,7 @@ if __name__=='__main__':
  
     ax1.plot(x,data,'ko', label='Data')
     for i,m in enumerate([m1,m2,m3]):
-        ax1.plot(x,m, c=colors[i], label='Model %d' % (i+1))
+        ax1.plot(x,m, c=colors[i], label='Model {}'.format(i+1))
     ax1.legend(numpoints=1, prop=dict(size='small'), loc='best')
  
     # Add samples to Taylor diagram
