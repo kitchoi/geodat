@@ -63,8 +63,8 @@ def var_dummy(ntime,nlat,nlon):
                                   dimname="lat")
 
     return geodat.nc.Variable(data=numpy.arange(float(ntime*nlat*nlon)).\
-                              reshape(ntime,nlat,nlon),
-                              dims=[time_dim,lat_dim,lon_dim],
+                              reshape(ntime, nlat, nlon),
+                              dims=[time_dim, lat_dim, lon_dim],
                               varname="temp")
 
 
@@ -149,13 +149,14 @@ class NCVariableTestCase(unittest.TestCase):
                                     parent=newparent)
         self.assertDictEqual(newvar.attributes, newparent.attributes)
 
-        # if parent does not have any of the (varname/dims/attributes)
-        # complain!
+
         def complain_about_parent(parent, err):
             with self.assertRaises(err):
                 newvar = geodat.nc.Variable(data=numpy.empty(10),
                                             parent=parent)
 
+        # if parent does not have any of the (varname/dims/attributes)
+        # complain!
         complain_about_parent(DummyVariable(varname="tmp", dims=self.var.dims),
                               AttributeError)
         complain_about_parent(DummyVariable(varname="tmp",
@@ -225,8 +226,8 @@ class NCVariableTestCase(unittest.TestCase):
 
     def test_getSlice(self):
         '''Test if slice objects can be created properly using lat-lon ranges'''
-        self.assertEqual(self.var.getSlice(latitude=(-45.,45.),
-                                           longitude=(100.,200.)),
+        self.assertEqual(self.var.getSlice(latitude=(-45., 45.),
+                                           longitude=(100., 200.)),
                          (slice(None, None, None),
                           slice(13, 37, None),
                           slice(17, 34, None)))
@@ -570,7 +571,7 @@ class NCVariableTestCase(unittest.TestCase):
         self.assertEqual(actual.data.shape[0], 2)
         self.assertTrue(numpy.allclose(actual.dims[0].data, numpy.arange(1,3)))
 
-            
+
     def test_div(self):
         """ Test computing divergence """
         actual = geodat.nc.div(self.var[0, :5, :4].squeeze(),
