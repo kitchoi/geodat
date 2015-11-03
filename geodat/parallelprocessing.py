@@ -54,6 +54,5 @@ def extract_output(ps,queue_output,timeout=None):
     except ValueError:
         logger.warning("extract_output: No result is returned "+\
                        "from the processes")
-        pass
     return list(results)
 
