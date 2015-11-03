@@ -1111,6 +1111,7 @@ class Variable(object):
             else:
                 new_sliceobj.append(sl)
 
+        # Slice the Dimensions
         for iax, sl in enumerate(new_sliceobj):
             if sl is None:
                 # numpy.newaxis is asked
