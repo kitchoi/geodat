@@ -11,42 +11,16 @@ import urllib
 
 import geodat.nc
 
-TMP_FILE_NAME = "test_nc_tmp.nc"
-TEST_DATA_NAME = "tests/data/test_nc_data.nc"
 
+def var_dummy(ntime, nlat, nlon):
+    ''' Create a geodat.nc.Variable instance of shape (ntime, nlat, nlon)
+    with times, latitudes and longitudes already initialised to cover the globe
 
-def does_test_data_exist(filename):
-    """Download data if test data does not exist
-
+    Time is a monthly axis with units "days since 0001-01-01", julian calendar
+    
     Returns:
-       boolean: True if the data exists or is successfully downloaded
-    """
-    if not os.path.exists(filename):
-        print("Test data not found.  Downloading...", end="")
-        # Create the test data directory if it does not exist
-        if not os.path.exists(os.path.dirname(filename)):
-            os.makedirs(os.path.dirname(filename))
-
-        # Download the data
-        try:
-            _, response = urllib.urlretrieve(
-                "http://kychoi.org/geodat_test_data/sst_parts.nc", filename)
-        except IOError:
-            print("Failed. IOError during urllib")
-            return False
-
-        if "netcdf" not in response.gettype():
-            # Failed to download
-            if os.path.exists(filename):
-                os.remove(filename)
-            print("Failed")
-            return False
-
-        print("OK")  # Completed download
-    return True
-
-
-def var_dummy(ntime,nlat,nlon):
+       geodat.nc.Variable
+    '''
     month_day = 365.25/12.
     time_dim = geodat.nc.Dimension(data=numpy.arange(394.,ntime*month_day+394.,
                                                      step=month_day,
@@ -72,6 +46,12 @@ def expect_import_error_unless_module_exists(module_name):
     ''' Runtime dependencies will lead to ImportError
     The library is supposed to check that and notify the
     user that a dependency is required for a function
+
+    Args:
+       module_name (str): Name of the required module
+
+    Returns:
+       decorator that accepts a single callable argument
     '''
     def new_test_func(test_func):
         def new_func(testcase, *args, **kwargs):
@@ -90,6 +70,11 @@ def expect_import_error_unless_module_exists(module_name):
 
 
 class DummyVariable(object):
+    ''' Empty object (not inheriting from Variable) that has `varname`, `dims`,
+    `attributes` as its attributes
+
+    Use for testing the parent argument in initialising geodat.nc.Variable
+    '''
     def __init__(self, varname=None, dims=None, attributes=None):
         if varname is not None:
             self.varname = varname
@@ -99,9 +84,10 @@ class DummyVariable(object):
             self.attributes = attributes
 
 
-
 class NCVariableTestCase(unittest.TestCase):
-    ''' Test case for the geodat.nc module '''
+    ''' Test case for the geodat.nc.Variable'''
+    TMP_FILE_NAME = "test_nc_tmp.nc"
+
     def setUp(self):
         ''' Create a geodat.nc.Variable for testing '''
         self.ntime = 24
@@ -112,8 +98,8 @@ class NCVariableTestCase(unittest.TestCase):
 
     def tearDown(self):
         # Delete temporary file if it exists
-        if os.path.exists(TMP_FILE_NAME):
-            os.remove(TMP_FILE_NAME)
+        if os.path.exists(self.TMP_FILE_NAME):
+            os.remove(self.TMP_FILE_NAME)
 
     def test_var_setup(self):
         ''' Test the other ways of creating a Variable '''
@@ -459,24 +445,24 @@ class NCVariableTestCase(unittest.TestCase):
 
     @expect_import_error_unless_module_exists("netCDF4")
     def test_savefile(self):
-        geodat.nc.savefile(TMP_FILE_NAME, self.var)
-        geodat.nc.savefile(TMP_FILE_NAME, self.var, overwrite=True)
-        geodat.nc.savefile(TMP_FILE_NAME, self.var[0:2], recordax=0,
+        geodat.nc.savefile(self.TMP_FILE_NAME, self.var)
+        geodat.nc.savefile(self.TMP_FILE_NAME, self.var, overwrite=True)
+        geodat.nc.savefile(self.TMP_FILE_NAME, self.var[0:2], recordax=0,
                            overwrite=True)
-        geodat.nc.savefile(TMP_FILE_NAME, self.var[2:], recordax=0,
+        geodat.nc.savefile(self.TMP_FILE_NAME, self.var[2:], recordax=0,
                            appendall=True)
-        tmp_var = geodat.nc.getvar(TMP_FILE_NAME, self.var.varname)
+        tmp_var = geodat.nc.getvar(self.TMP_FILE_NAME, self.var.varname)
 
         # Verify
         self.assertTrue(tmp_var.data.shape, self.var.data.shape)
         self.assertTrue(numpy.allclose(tmp_var.data, self.var.data))
 
-        geodat.nc.savefile(TMP_FILE_NAME, self.var, overwrite=True)
+        geodat.nc.savefile(self.TMP_FILE_NAME, self.var, overwrite=True)
         newvar = self.var[10:]
         newvar.varname="temp2"
-        geodat.nc.savefile(TMP_FILE_NAME, newvar, appendall=True)
-        tmp_var = geodat.nc.getvar(TMP_FILE_NAME, self.var.varname)
-        tmp_var2 = geodat.nc.getvar(TMP_FILE_NAME, "temp2")
+        geodat.nc.savefile(self.TMP_FILE_NAME, newvar, appendall=True)
+        tmp_var = geodat.nc.getvar(self.TMP_FILE_NAME, self.var.varname)
+        tmp_var2 = geodat.nc.getvar(self.TMP_FILE_NAME, "temp2")
 
         # Verify
         self.assertTrue(tmp_var.data.shape, self.var.data.shape)
@@ -488,32 +474,8 @@ class NCVariableTestCase(unittest.TestCase):
         self.assertTrue(tmp_var2.getDimnames()[0], "time1")
 
         # Clean up
-        if os.path.exists(TMP_FILE_NAME):
-            os.remove(TMP_FILE_NAME)
-
-
-    @unittest.skipIf(not does_test_data_exist(TEST_DATA_NAME),
-                     "Test data does not exist.  Failed to download.")
-    def test_openfile(self):
-        ''' Test opening file and extracting variables from netCDF files'''
-
-        # Check if a single variable can be extracted
-        var = geodat.nc.getvar(TEST_DATA_NAME, "sstMAM")
-        self.assertTupleEqual(var.data.shape, (3, 180, 360))
-
-        # Check if all of the variables can be extracted
-        dataset = geodat.nc.dataset(TEST_DATA_NAME)
-        expected = sorted(["sstSON", "sstMAM", "sstDJF", "sstJJA"])
-        self.assertListEqual(expected, sorted(dataset.keys()))
-
-        # Test overwriting loaded value
-        dataset = geodat.nc.dataset([TEST_DATA_NAME, TEST_DATA_NAME], "o")
-        self.assertListEqual(expected, sorted(dataset.keys()))
-
-        # Test skipping loaded value
-        dataset = geodat.nc.dataset([TEST_DATA_NAME, TEST_DATA_NAME], "s")
-        self.assertListEqual(expected, sorted(dataset.keys()))
-
+        if os.path.exists(self.TMP_FILE_NAME):
+            os.remove(self.TMP_FILE_NAME)
 
     @expect_import_error_unless_module_exists("spharm")
     def test_regrid_spharm(self):
@@ -585,6 +547,71 @@ class NCVariableTestCase(unittest.TestCase):
         expected[0, :] = expected[-1, :] = expected[:, 0] = expected[:, -1] = \
                         numpy.ma.masked
         self.assertTrue(numpy.ma.allclose(actual.data, expected, rtol=1e-5))
+
+
+class NCFileIOTestCase(unittest.TestCase):
+    TEST_DATA_NAME = "tests/data/test_nc_data.nc"
+    TEST_DATA_SOURCE = "http://kychoi.org/geodat_test_data/sst_parts.nc"
+
+    @property
+    def does_test_data_exist(self):
+        """Download data if test data does not exist
+
+        Args:
+           filename (str): path to the test data
+
+        Returns:
+           boolean: True if the data exists or is successfully downloaded
+        """
+        if not os.path.exists(self.TEST_DATA_NAME):
+            print("Test data not found.  Downloading...", end="")
+            # Create the test data directory if it does not exist
+            if not os.path.exists(os.path.dirname(self.TEST_DATA_NAME)):
+                os.makedirs(os.path.dirname(self.TEST_DATA_NAME))
+
+            # Download the data
+            try:
+                _, response = urllib.urlretrieve(self.TEST_DATA_SOURCE,
+                                                 self.TEST_DATA_NAME)
+            except IOError:
+                print("Failed. IOError during urllib")
+                return False
+
+            if "netcdf" not in response.gettype():
+                # Failed to download
+                if os.path.exists(self.TEST_DATA_NAME):
+                    os.remove(self.TEST_DATA_NAME)
+                print("Failed")
+                return False
+
+            print("OK")  # Completed download
+        return True
+
+
+    def test_openfile(self):
+        ''' Test opening file and extracting variables from netCDF files'''
+
+        if not self.does_test_data_exist:
+            self.skipTest("Test data does not exist.  Failed to download.")
+
+        # Check if a single variable can be extracted
+        var = geodat.nc.getvar(self.TEST_DATA_NAME, "sstMAM")
+        self.assertTupleEqual(var.data.shape, (3, 180, 360))
+
+        # Check if all of the variables can be extracted
+        dataset = geodat.nc.dataset(self.TEST_DATA_NAME)
+        expected = sorted(["sstSON", "sstMAM", "sstDJF", "sstJJA"])
+        self.assertListEqual(expected, sorted(dataset.keys()))
+
+        # Test overwriting loaded value
+        dataset = geodat.nc.dataset([self.TEST_DATA_NAME,
+                                     self.TEST_DATA_NAME], "o")
+        self.assertListEqual(expected, sorted(dataset.keys()))
+
+        # Test skipping loaded value
+        dataset = geodat.nc.dataset([self.TEST_DATA_NAME,
+                                     self.TEST_DATA_NAME], "s")
+        self.assertListEqual(expected, sorted(dataset.keys()))
 
 
 if __name__== "__main__":

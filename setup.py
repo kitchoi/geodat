@@ -19,5 +19,5 @@ setup(name='Geodat',
           ],
       packages=["geodat","geodat.plot"],
       install_requires = requires,
-      test_suite = "tests.get_tests",
+      test_suite = "tests.full_suite",
      )
