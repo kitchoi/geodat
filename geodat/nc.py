@@ -577,12 +577,11 @@ class Variable(object):
           the arguments.  If `attributes` is copied from `parent`, the
           dictionary assigned to the argument `attributes` is used to update the
           copied `attributes`.  `parent` is left unchanged.
-        lat (tuple): length=2, specify a meridional domain, e.g. lat=(-5,5)
-        lon (tuple): length=2, specify a zonal domain, e.g. lon=(-170,-120.),
-               modulo=360. is forcefully applied
-        time (tuple): extract a temporal domain
+
         ensureMasked (bool): whether the array is masked using _FillValue
                upon initialization. default: False
+
+    Other keyword arguments would be parsed to getRegion
 
     Examples:
         >>> var = Variable(netcdf.netcdf_file,"temperature")
@@ -994,6 +993,8 @@ class Variable(object):
     def getRegion(self, **kwargs):
         ''' Return a new Variable object within the region specified.
 
+        Values have to be a length-2 iterable that specifies the range
+
         Keys "time","t","TIME","T" are all considered as "T" for time axis.
 
         Keys "x","X","lon","LON","longitude","LONGITUDE" are all considered as
@@ -1007,7 +1008,7 @@ class Variable(object):
         Examples:
             >>> # Extracts the region where -20. <= latitude <= 20.
             >>> # and 100. <= longitude <= 200.
-            >>> var.getRegion(lat=(-20.,20.),lon=(100.,200.))
+            >>> var.getRegion(lat=(-20.,20.), lon=(100.,200.))
         '''
         a = Variable(data=self.data, parent=self)
         a.setRegion(**kwargs)
