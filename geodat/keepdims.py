@@ -1,7 +1,23 @@
+'''This module is applied to numpy arithmetic functions and it has three main
+purposes:
+
+The first two purposes are supported in some numpy routines (but not their
+masked array equivalence) since ver 1.7+:
+1) deliver the same effect of setting keepdims=True
+2) accept a tuple of int as axis
+
+The third feature is useful for climate science:
+3) propagate masked values instead of ignoring them
+
+`keepdims` in this module is a decorator that can be applied to any numpy
+routines such as numpy.mean, numpy.argmax, ... that accept axis as an argument.
+Their numpy.ma counterparts would be called if the input array is a numpy masked
+array.
+'''
+
 import warnings
 
 import numpy
-import numpy.ma
 
 def keepdims(f):
 
@@ -14,23 +30,24 @@ def keepdims(f):
             f_ma = getattr(npmod,f.__name__)
         else:
             f_ma = f
-        result = f_ma(arr,axis,*args,**kwargs)
+        result = f_ma(arr, axis, *args, **kwargs)
         return result
 
 
-    def new_f_axis(arr,axis,*args,**kwargs):
+    def new_f_axis(arr, axis, *args,**kwargs):
         # Only one axis is requested
-        result = new_f(arr,axis,*args,**kwargs)
-        if isinstance(arr,numpy.ma.core.MaskedArray):
+        result = new_f(arr, axis, *args,**kwargs)
+        if isinstance(arr, numpy.ma.core.MaskedArray):
             npmod = numpy.ma
         else:
             npmod = numpy
-        if arr.ndim > 1:
-            return npmod.expand_dims(result,axis)
-        else:
-            return numpy.ma.array(result,dtype=arr.dtype)
 
-    def new_f_axes(arr,axis,*args,**kwargs):
+        if arr.ndim > 0 and arr.ndim > result.ndim:
+            return npmod.expand_dims(result, axis)
+
+        return result
+
+    def new_f_axes(arr, axis, *args, **kwargs):
         # dimensions of array
         ndims = arr.ndim
 
@@ -44,26 +61,26 @@ def keepdims(f):
         newaxorder += axis + [ i for i in range(numaxfront+nravel,ndims) ]
 
         # Do transpose
-        arr = numpy.transpose(arr,newaxorder)
+        arr = numpy.transpose(arr, newaxorder)
 
         # Reshape
         arr = arr.reshape(arr.shape[:numaxfront] + (-1,)
                             + arr.shape[numaxfront+nravel:])
 
         # apply the function
-        result = new_f(arr,numaxfront,*args,**kwargs)
+        result = new_f(arr, numaxfront, *args, **kwargs)
+
         if numpy.isscalar(result):
             if isinstance(arr,numpy.ma.core.MaskedArray):
                 npmod = numpy.ma
             else:
                 npmod = numpy
-            result = npmod.array([result],dtype=arr.dtype)
-            return npmod.ones((1,)*ndims)*result
+            return npmod.array(result).reshape([1]*ndims)
         else:# insert the axes back
             return result[[numpy.newaxis if i in axis else slice(None)
                            for i in range(ndims) ]]
 
-    def new_f_dispatch(arr,axis=None,*args,**kwargs):
+    def new_f_dispatch(arr, axis=None, *args,**kwargs):
         """ Behave like the new version numpy `keepdims`=True
 
         Args:
@@ -83,7 +100,7 @@ def keepdims(f):
             if arr.ndim == 0:
                 axis = 0
             else:
-                axis=range(0,arr.ndim)
+                axis=range(0, arr.ndim)
 
         if isinstance(axis, int):
             func = new_f_axis
@@ -117,9 +134,3 @@ argmax = keepdims(numpy.argmax)
 argmin = keepdims(numpy.argmin)
 trapz = keepdims(numpy.trapz)
 sum = keepdims(numpy.sum)
-
-if __name__ == '__main__':
-    A = numpy.random.random((10,11,12,7))
-    for i in range(4):
-        for j in range(i+1,4):
-            assert numpy.allclose(mean(A,axis=(i,j)).squeeze(),numpy.mean(numpy.mean(A,axis=j),axis=i))
