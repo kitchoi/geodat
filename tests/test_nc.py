@@ -335,10 +335,9 @@ class NCVariableTestCase(unittest.TestCase):
 
 
     def test_info(self):
-        stdnull = open(os.devnull, "w")
-        self.var.info(file_out=stdnull);
-        self.var.info(True, file_out=stdnull);
-        stdnull.close()
+        with open(os.devnull, "w") as stdnull:
+            self.var.info(file_out=stdnull);
+            self.var.info(True, file_out=stdnull);
         self.assertTrue(True)
 
 
