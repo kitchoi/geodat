@@ -337,8 +337,8 @@ class Dimension(object):
         ''' Return True if the axis is a climatological time axis '''
         if self.getCAxis() != 'T':
             return False
-        return all([ x == y for x,y in zip(
-            sorted(self.getDate("m", True)), range(1, 13)) ])
+        return all((x == y for x,y in zip(
+            sorted(self.getDate("m", True)), range(1, 13))))
 
 
     def time2array(self):
@@ -411,7 +411,7 @@ class Dimension(object):
         except TypeError:
             raise TypeError("toggle has to be iterable:\"Y/m/d/H/M/S\"")
 
-        if not all( [ t in "YmdHMS" for t in toggle]):
+        if not all((t in "YmdHMS" for t in toggle)):
             raise ValueError("toggle has to be one of \"Y/m/d/H/M/S\"")
 
         #--------------------------------------------------------
@@ -863,7 +863,7 @@ class Variable(object):
         """
         if not isinstance(parent.dims, list):
             raise TypeError("parent.dims must be a list")
-        if any([not isinstance(dim, Dimension) for dim in parent.dims]):
+        if any((not isinstance(dim, Dimension) for dim in parent.dims)):
             raise TypeError("parent.dims must be a list of Dimension instance")
         self.dims = copy.copy(parent.dims)
 
@@ -1119,8 +1119,8 @@ class Variable(object):
         '''
         for obj in sliceobj:
             if isinstance(obj, (collections.Sequence, numpy.ndarray)) and\
-               all([isinstance(sl, (int, bool, numpy.bool_))
-                    for sl in tuple(obj)]):
+               all((isinstance(sl, (int, bool, numpy.bool_))
+                    for sl in tuple(obj))):
                 logger.info("Advanced indexing is invoked for {}".format(
                     self.varname))
                 break
@@ -1175,20 +1175,32 @@ class Variable(object):
         '''
         return self.getAxis('Y')
 
-    getLat = getLatitude
-
     def getLongitude(self):
         ''' Return a numpy array that contains the longitude axis
         '''
         return self.getAxis('X')
-
-    getLon = getLongitude
 
     def getTime(self):
         ''' Return a numpy array that contains the time axis
         '''
         return self.getAxis('T')
 
+    @property
+    def lat(self):
+        return self.getLatitude()
+
+    @property
+    def lon(self):
+        return self.getLongitude()
+
+    @property
+    def time(self):
+        return self.getTime()
+
+    @property
+    def depth(self):
+        return self.getAxis("Z")
+    
     def apply_mask(self, mask):
         ''' mask the variable's last axes with a mask
         This function changes the variable
@@ -1980,8 +1992,8 @@ def conform_regrid(*args, **kwargs):
     # Conform the region first
     region = conform_region(*args)
     varstoregrid = [var.getRegion(**region) for var in args]
-    axes = 'X' if all(['X' in var.getCAxes() for var in varstoregrid]) else ''
-    axes += 'Y' if all(['Y' in var.getCAxes() for var in varstoregrid]) else ''
+    axes = 'X' if all(('X' in var.getCAxes() for var in varstoregrid)) else ''
+    axes += 'Y' if all(('Y' in var.getCAxes() for var in varstoregrid)) else ''
     if 'ref' in kwargs:
         ref = kwargs.pop('ref').getRegion(**region)
         regridded = [pyferret_regrid(var, ref)
