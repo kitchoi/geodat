@@ -9,10 +9,12 @@ masked array equivalence) since ver 1.7+:
 The third feature is useful for climate science:
 3) propagate masked values instead of ignoring them
 
-`keepdims` in this module is a decorator that can be applied to any numpy
-routines such as numpy.mean, numpy.argmax, ... that accept axis as an argument.
-Their numpy.ma counterparts would be called if the input array is a numpy masked
-array.
+`keepdims` in this module is a decorator that can be applied to any 
+func(numpy.ndarray, axis) such as numpy.mean, numpy.argmax, ... i.e. you can
+create your own func.
+
+If the function is a numpy routine, its numpy.ma counterpart would be called if
+the input array is a numpy masked array.
 '''
 
 import warnings
@@ -21,20 +23,20 @@ import numpy
 
 def keepdims(f):
 
-    def new_f(arr,axis,*args,**kwargs):
+    def new_f(arr, axis, *args, **kwargs):
         if isinstance(arr,numpy.ma.core.MaskedArray):
             npmod = numpy.ma
         else:
             npmod = numpy
-        if hasattr(npmod,f.__name__):
-            f_ma = getattr(npmod,f.__name__)
+        if hasattr(npmod, f.__name__):
+            f_ma = getattr(npmod, f.__name__)
         else:
             f_ma = f
         result = f_ma(arr, axis, *args, **kwargs)
         return result
 
 
-    def new_f_axis(arr, axis, *args,**kwargs):
+    def new_f_axis(arr, axis, *args, **kwargs):
         # Only one axis is requested
         result = new_f(arr, axis, *args,**kwargs)
         if isinstance(arr, numpy.ma.core.MaskedArray):
@@ -98,11 +100,11 @@ def keepdims(f):
 
         if axis is None:
             if arr.ndim == 0:
-                axis = 0
+                axis = None
             else:
                 axis=range(0, arr.ndim)
 
-        if isinstance(axis, int):
+        if isinstance(axis, int) or axis is None:
             func = new_f_axis
         else:
             func = new_f_axes
@@ -110,12 +112,7 @@ def keepdims(f):
 
         # Propagate mask if kwargs['progMask'] is True
         if progMask and isinstance(arr, numpy.ma.core.MaskedArray):
-            try:
-                result.mask = keepdims(numpy.max)(arr.mask, axis)
-            except ZeroDivisionError:
-                warnings.warn('ZeroDivisionError while propagaing mask.')
-            except ValueError:
-                warnings.warn('ValueError while propaging mask.')
+            result.mask = keepdims(numpy.max)(arr.mask, axis)
 
         # Preserve fill value
         if isinstance(arr,numpy.ma.core.MaskedArray):
