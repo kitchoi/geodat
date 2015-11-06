@@ -15,6 +15,7 @@ import logging
 from functools import wraps, partial
 import datetime
 import inspect
+import collections
 
 import numpy
 import scipy.io.netcdf as netcdf
@@ -33,8 +34,8 @@ from . import grid_func
 from . import pyferret_func
 from . import units
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 #-----------------------------------------------------------------
@@ -1052,40 +1053,41 @@ class Variable(object):
         self[sl] = value
         return self
 
-    def _create_slice_(self, region=None):
+    def _create_slice(self, region=None):
         ''' Generate a tuple of slice object for the given region
         specifications
         '''
         if region is None or len(region) == 0:
             return (slice(None),)*self.data.ndim
 
-        sliceobj = ()
-        # general selector method that returns a slice object
-        selector = arrays.getSlice
+        sliceobjs = []
+
+        # A list of 1d arrays
         axes = self.getAxes()
-        cartesian_axes = self.getCAxes()
-        assert len(axes) == len(cartesian_axes) == self.data.ndim
-        for axis in cartesian_axes:
-            iax = cartesian_axes.index(axis)
-            bounds = region.get(axis, None)
-            if bounds is None:
-                sliceobj += (slice(None),)
-            elif isinstance(bounds, slice):
-                sliceobj += (bounds,)
-            elif isinstance(bounds, numpy.ndarray):
-                sliceobj += (bounds,)
-            else:
-                if not isinstance(bounds, tuple):
-                    bounds = (bounds,)
-                if len(bounds) == 1:
-                    bounds = (bounds[0], bounds[0])
-                if axis == 'X':
+
+        caxes = self.getCAxes()
+
+        for axis in caxes:
+            sliceobj = region.get(axis, slice(None))
+
+            # if sliceobj is a single value
+            # lower bound == upper bound (exact value)
+            if numpy.isscalar(sliceobj):
+                sliceobj = (sliceobj, sliceobj)
+
+            if not isinstance(sliceobj, (slice, numpy.ndarray)):
+                iax = caxes.index(axis)
+                # Set modulo, if unset and axis is longitude, use 360 degree
+                modulo = self.dims[iax].attributes.get('modulo', None)
+                if axis == "X" and modulo is None:
                     modulo = 360.
-                else:
-                    modulo = self.dims[iax].attributes.get('modulo', None)
-                sliceobj += (selector(axes[cartesian_axes.index(axis)],
-                                      bounds[0], bounds[1], modulo=modulo),)
-        return sliceobj
+                sliceobj = arrays.getSlice(axes[caxes.index(axis)],
+                                           sliceobj[0], sliceobj[1],
+                                           modulo=modulo)
+
+            sliceobjs.append(sliceobj)
+
+        return tuple(sliceobjs)
 
 
     def slicing(self, sliceobj):
@@ -1093,11 +1095,35 @@ class Variable(object):
 
         Args:
            sliceobj (tuple): slice object
+           verbose (bool): warns if advanced indexing is invoked
 
         Returns: None
         '''
+
+        if not isinstance(sliceobj, tuple):
+            raise TypeError("slicing expects a tuple as sliceobj")
+
         ndim = self.data.ndim
         self.data = self.data[sliceobj]
+
+        '''
+        Check to see if advanced indexing is invoked. If so, notify the user.
+        Advanced indexing may be required for longitude axis as it wrapped
+        around 360 degree.
+        Basic slicing occurs if the sliceobj is a slice object, an integer
+        or a tuple of slice object/int/Ellipsis/newaxis.
+        Advanced indexing occurs when sliceobj is a non-tuple sequence object,
+        an ndarray or a tuple with at least one sequence object or ndarray
+        There isn't a reliable checking algorithm for finding out if two arrays
+        actually share memory
+        '''
+        for obj in sliceobj:
+            if isinstance(obj, (collections.Sequence, numpy.ndarray)) and\
+               all([isinstance(sl, (int, bool, numpy.bool_))
+                    for sl in tuple(obj)]):
+                logger.info("Advanced indexing is invoked for {}".format(
+                    self.varname))
+                break
 
         num_newaxis = 0
         num_ellipsis = 0
@@ -1149,10 +1175,14 @@ class Variable(object):
         '''
         return self.getAxis('Y')
 
+    getLat = getLatitude
+
     def getLongitude(self):
         ''' Return a numpy array that contains the longitude axis
         '''
         return self.getAxis('X')
+
+    getLon = getLongitude
 
     def getTime(self):
         ''' Return a numpy array that contains the time axis
