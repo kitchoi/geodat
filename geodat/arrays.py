@@ -33,13 +33,12 @@ def getSlice(axis, lower, upper, modulo=None):
     if not matched.any():
         matched = gt_eq_lower ^ lt_eq_upper
     
-    if not matched.any():
-        raise ValueError("Not found for range: ({}, {}). modulo:{}".format(
-            lower, upper, modulo))
-
     # Find the beginning and ending of the chunk that matches the range
     indices = numpy.where(numpy.diff(~matched))[0]
-    if len(indices) == 1:
+    if len(indices) == 0:
+        raise ValueError("Not found for range: ({}, {}). modulo:{}".format(
+            lower, upper, modulo))
+    elif len(indices) == 1:
         i1, i2 = indices+1, len(axis)-1
     elif len(indices) == 2:
         i1, i2 = indices+1
@@ -51,7 +50,7 @@ def getSlice(axis, lower, upper, modulo=None):
 
     # Determine if the chunks are at the ends of the axis
     if all(matched[:i1]) and all(matched[i2:]):
-        return numpy.array(range(i2, len(axis))+range(0, i1+1))
+        return numpy.array(range(i2, len(axis))+range(0, i1))
     else:
         return slice(i1, i2, None)
 
