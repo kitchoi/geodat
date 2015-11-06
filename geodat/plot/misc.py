@@ -123,7 +123,7 @@ def grouped_barboxplot(plot_option,group, keys1=None, keys2=None,
                     else:
                         ecolor= ecolors
                 # if the value is a list or tuple, find the mean and standard deviation
-                if isinstance(value,list) or isinstance(value,tuple):
+                if isinstance(value, (list, tuple)):
                     value_std = [bar_marks_funcs[0](value),bar_marks_funcs[2](value)]
                     value_mean = bar_marks_funcs[1](value)
                     rects.append(
