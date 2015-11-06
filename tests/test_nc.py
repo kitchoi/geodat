@@ -17,7 +17,7 @@ def var_dummy(ntime, nlat, nlon):
     with times, latitudes and longitudes already initialised to cover the globe
 
     Time is a monthly axis with units "days since 0001-01-01", julian calendar
-    
+
     Returns:
        geodat.nc.Variable
     '''
@@ -220,10 +220,17 @@ class NCVariableTestCase(unittest.TestCase):
 
     def test_getRegion(self):
         '''Test if the sliced Variable has the right shape'''
-        self.assertEqual(self.var.getRegion(latitude=(-45., 45.),
-                                            longitude=(100., 200.)).data.shape,
-                         (24, 24, 17))
-
+        self.assertTupleEqual(self.var.getRegion(lat=(-45., 45.),
+                                                 lon=(100., 200.)).data.shape,
+                              (24, 24, 17))
+        self.assertTupleEqual(self.var.getRegion(lat=(-45., 45.),
+                                                 lon=(100., -160.)).data.shape,
+                              (24, 24, 17))
+        self.assertTupleEqual(self.var.getRegion(lat=(-45., 45.),
+                                                 lon=(-10., 10.)).data.shape,
+                              (24, 24, 4))
+        with self.assertRaisesRegexp(ValueError, "Not found"):
+            self.var.getRegion(lon=-10.)
 
     def test_getRegion_no_side_effect(self):
         '''getRegion should not have side effect'''
