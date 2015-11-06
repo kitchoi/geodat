@@ -174,15 +174,31 @@ class NCVariableTestCase(unittest.TestCase):
 
     def test_getAxis(self):
         " Test if the axis/axes can be retrieved properly "
+
+        # Using property
+        self.assertTrue(numpy.allclose(self.var.time,
+                                       numpy.arange(394.,
+                                                    self.ntime*365.25/12.+394.,
+                                                    step=365.25/12.,
+                                                    dtype=numpy.float)))
+        self.assertTrue(numpy.allclose(self.var.lat,
+                                       numpy.linspace(-90., 90., self.nlat)))
+        self.assertTrue(numpy.allclose(self.var.lon,
+                                       numpy.linspace(0., 360., self.nlon,
+                                                      endpoint=False)))
+
+        # Using getAxis
+        self.assertTrue(numpy.allclose(self.var.getAxis("T"),
+                                       numpy.arange(394.,
+                                                    self.ntime*365.25/12.+394.,
+                                                    step=365.25/12.,
+                                                    dtype=numpy.float)))
         self.assertTrue(numpy.allclose(self.var.getAxis("Y"),
                                        numpy.linspace(-90., 90., self.nlat)))
         self.assertTrue(numpy.allclose(self.var.getAxis("X"),
                                        numpy.linspace(0., 360., self.nlon,
                                                       endpoint=False)))
-        self.assertTrue(numpy.allclose(
-            self.var.getAxis("Y"), self.var.getLatitude()))
-        self.assertTrue(numpy.allclose(
-            self.var.getAxis("X"), self.var.getLongitude()))
+
         self.assertEqual(len(self.var.getAxes()), 3)
 
 
@@ -220,17 +236,69 @@ class NCVariableTestCase(unittest.TestCase):
 
     def test_getRegion(self):
         '''Test if the sliced Variable has the right shape'''
-        self.assertTupleEqual(self.var.getRegion(lat=(-45., 45.),
-                                                 lon=(100., 200.)).data.shape,
-                              (24, 24, 17))
-        self.assertTupleEqual(self.var.getRegion(lat=(-45., 45.),
-                                                 lon=(100., -160.)).data.shape,
-                              (24, 24, 17))
-        self.assertTupleEqual(self.var.getRegion(lat=(-45., 45.),
-                                                 lon=(-10., 10.)).data.shape,
-                              (24, 24, 4))
+        # Simpliest case
+        self.assertTupleEqual(self.var.getRegion(lon=(100., 200.)).data.shape,
+                              (24, 50, 17))
+
+        # Negative longitude is taken care of
+        self.assertTupleEqual(self.var.getRegion(lon=(100., -160.)).data.shape,
+                              (24, 50, 17))
+
+        # Cross the meridian
+        self.assertTupleEqual(self.var.getRegion(lon=(-10., 10.)).data.shape,
+                              (24, 50, 3))
+
+        # One-sided
+        self.assertTupleEqual(self.var(lat=(-45., 90.)).data.shape,
+                              (24, 36, 60))
+
+        # All within range
+        self.assertTupleEqual(self.var(lat=(-90., 90.)).data.shape,
+                              (24, 50, 60))
+
+        # Out of range
+        with self.assertRaisesRegexp(ValueError, "Not found"):
+            self.var.getRegion(lat=(-100., -95.))
+
         with self.assertRaisesRegexp(ValueError, "Not found"):
             self.var.getRegion(lon=-10.)
+
+        with self.assertRaisesRegexp(ValueError, "Not found"):
+            self.var.getRegion(lat=(70., 71.))
+
+        with self.assertRaisesRegexp(ValueError, "Not found"):
+            self.var.getRegion(lat=(100., -100.))
+
+        # longitude is rearranged
+        self.var.dims[self.var.getIAxis("X")].data = numpy.hstack(
+            (self.var.lon[self.nlon/2:], self.var.lon[:self.nlon/2]))
+
+        # Cross the meridian
+        self.assertTupleEqual(self.var.getRegion(lon=(-10., 10.)).data.shape,
+                              (24, 50, 3))
+
+        # Negative longitude is taken care of
+        self.assertTupleEqual(self.var.getRegion(lon=(100., -160.)).data.shape,
+                              (24, 50, 17))
+        # Out of range
+        with self.assertRaisesRegexp(ValueError, "Not found"):
+            self.var.getRegion(lat=(-100., -95.))
+
+        with self.assertRaisesRegexp(ValueError, "Not found"):
+            self.var.getRegion(lon=-10.)
+
+        with self.assertRaisesRegexp(ValueError, "Not found"):
+            self.var.getRegion(lat=(70., 71.))
+
+        with self.assertRaisesRegexp(ValueError, "Not found"):
+            self.var.getRegion(lat=(100., -100.))
+
+        # Go around the latitude circle twice, won't know what to do
+        var_double_lon = geodat.nc.concatenate((self.var, self.var),
+                                               self.var.getIAxis("X"))
+        with self.assertRaisesRegexp(RuntimeError, "Too many chunks"):
+            var_double_lon.getRegion(lon=(100., 120.))
+
 
     def test_getRegion_no_side_effect(self):
         '''getRegion should not have side effect'''
@@ -618,6 +686,10 @@ class NCFileIOTestCase(unittest.TestCase):
         dataset = geodat.nc.dataset([self.TEST_DATA_NAME,
                                      self.TEST_DATA_NAME], "s")
         self.assertListEqual(expected, sorted(dataset.keys()))
+
+        with self.assertRaisesRegexp(ValueError, "Invalid choice"):
+            geodat.nc.dataset([self.TEST_DATA_NAME,
+                               self.TEST_DATA_NAME], "v")
 
 
 if __name__== "__main__":
