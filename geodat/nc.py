@@ -674,14 +674,15 @@ class Variable(object):
         else:
             return True
 
-
     def addHistory(self, string):
         """ Append to the history attribute in the variable.
         If history doesn't exist, create one
         """
-        history = self.attributes.get('history', '')
-        newhistory = history + '; '+ string
-        self.setattr('history', newhistory)
+        old_history = getattr(self, 'history', None)
+        if old_history is None:
+            self.attributes["history"] = string
+        else:
+            self.attributes['history'] = "; ".join((old_history, string))
 
     def __repr__(self):
         result = "<{}.{} ".format(__name__, type(self).__name__) + \
