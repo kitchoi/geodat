@@ -146,6 +146,8 @@ def _genereal_axis(axis):
         'T':  'time','t','TIME','T'
         'X':  'x','X','lon','LON','longitude','LONGITUDE'
         'Y':  'y','Y','lat','LAT','latitude','LATITUDE'
+        'Z':  'z','Z",'dep','DEP','depth','DEPTH','lev','LEV'
+
     Anything not recognized will be returned in upper case
 
     Args:
@@ -978,6 +980,12 @@ class Variable(object):
     def __rmul__(self, other):
         return self.__mul__(other)
 
+
+    def __call__(self, **region):
+        '''Same as self.getRegion'''
+        return self.getRegion(**region)
+
+
     def __getitem__(self, sliceobj):
         a = Variable(data=self.data, varname=self.varname, parent=self)
         sliceobj = numpy.index_exp[sliceobj]
@@ -985,10 +993,12 @@ class Variable(object):
         a.addHistory('__getitem__['+str(sliceobj)+']')
         return a
 
+
     def __setitem__(self, sliceobj, val):
         if type(sliceobj) is dict:
             sliceobj = self.getSlice(**sliceobj)
         self.data[sliceobj] = val
+
 
     def getRegion(self, **kwargs):
         ''' Return a new Variable object within the region specified.
