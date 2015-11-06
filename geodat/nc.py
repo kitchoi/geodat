@@ -293,7 +293,7 @@ class Dimension(object):
 
         """
         atts = self.attributes
-        cax = atts.get('axis', atts.get('cartesian_axis', None))
+        cax = atts.get('axis', atts.get('cartesian_axis'))
         if cax is None:
             if self.units is not None:
                 cax = units.assign_caxis(self.units)
@@ -675,7 +675,7 @@ class Variable(object):
             self.attributes['history'] = "; ".join((old_history, string))
 
     def __repr__(self):
-        result = "<{}.{} ".format(__name__, type(self).__name__) + \
+        result = "<{0}.{1} ".format(__name__, type(self).__name__) + \
             self.varname +\
             '(' + ",".join(self.getDimnames()) + '), shape: ' +\
             str(self.data.shape) + '>'
@@ -1061,7 +1061,7 @@ class Variable(object):
             if not isinstance(sliceobj, (slice, numpy.ndarray)):
                 iax = caxes.index(axis)
                 # Set modulo, if unset and axis is longitude, use 360 degree
-                modulo = self.dims[iax].attributes.get('modulo', None)
+                modulo = getattr(self.dims[iax], 'modulo', None)
                 if axis == "X" and modulo is None:
                     modulo = 360.
                 sliceobj = arrays.getSlice(axes[caxes.index(axis)],
@@ -1760,7 +1760,7 @@ def clim2long(clim, target):
         clim.data, 0, target.getDate("m", True)),
                     dims=new_dim,
                     attributes=clim.attributes,
-                    history="geodat.nc.clim2long({},{})".\
+                    history="geodat.nc.clim2long({0},{1})".\
                     format(clim.varname, target.varname),
                     varname=clim.varname)
 
@@ -2453,7 +2453,7 @@ def plot_vs_axis(var, axis, *args, **kwargs):
         times = var.getAxis(axis)
         iticks = range(0, len(times), len(times)/10)
         xticks = [times[i] for i in iticks]
-        dates = ["{}-{}-{}".format(*var.getDate()[i]) for i in iticks]
+        dates = ["{}-{}-{}".format(*var.getDate("Ymd")[i]) for i in iticks]
         pylab.gca().set_xticks(xticks)
         pylab.gca().set_xticklabels(dates, rotation=20)
     return line
