@@ -1,6 +1,9 @@
 Tutorials
 ===========
 
+.. contents::
+
+
 Import the library
 ---------------------
 
@@ -22,21 +25,43 @@ You can use :py:func:`~geodat.nc.getvar` for extracting one variable and its ass
 Getting a regional slide of your data
 -----------------------------------------
 
-Suppose you already have a Variable `sst`, you can get a regional slice of it using :py:func:`~geodat.nc.getRegion`.
+Suppose you already have a Variable `sst`, you can get a regional slice of it by simply calling the variable as a function:
 
   >>> # This returns a new Variable
-  >>> sst_regional = sst.getRegion(lat=(-80., 80.))
+  >>> sst_regional = sst(lat=(-20., 20.), lon=(100., 220.))
+  >>> sst_regional
+  <geodat.nc.Variable sst(time,lat,lon), shape: (120, 40, 120)>
+  >>> sst # unchanged
+  <geodat.nc.Variable sst(time,lat,lon), shape: (120, 180, 360)>
 
-You can also set region when you load the data.
+The specified range is inclusive.  The example above will slice the region where 20S<=latitude<=20N and 100E<=longitude<=40W.
+
+This is the same as calling :py:func:`~geodat.nc.Variable.getRegion`.
+
+  >>> sst_regional = sst.getRegion(lat=(-20., 20.),
+                                   lon=(100., 220.))
+
+Other names referring to time, depth, latitude and longitude are also accepted:
+
+==============    ==================================
+Name              Other names (and their upper case)
+==============    ==================================
+Time              time, t
+Longitude         longitude, lon, x
+Latitude          latitude, lat, y
+Depth             depth, dep, level, lev, z
+==============    ==================================
+
+You can also set the region when you load the data.
 
   >>> # Extract regional sea surface temperature from a file sst.nc
   >>> # Latitude: 20S-20N, Longitude: 100E-220E
   >>> sst = geodat.nc.getvar("sst.nc", "sst",
-  >>>                        lat=(-20., 20.), lon=(100., 220.)) 
-  >>> print sst
+                             lat=(-20., 20.), lon=(100., 220.)) 
+  >>> sst
   <geodat.nc.Variable sst(time,lat,lon), shape: (120, 40, 120)>
 
-This is in fact equivalent to calling :py:func:`~geodat.nc.getRegion` after :py:func:`~geodat.nc.getvar`.
+This is in fact equivalent to calling :py:func:`~geodat.nc.Variable.getRegion` after :py:func:`~geodat.nc.getvar` and assigning it to `sst`.
 
 
 
