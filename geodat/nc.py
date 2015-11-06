@@ -1030,7 +1030,7 @@ class Variable(object):
         '''
         region = _general_region(kwargs)
         if region:
-            return self._create_slice_(region)
+            return self._create_slice(region)
         else:
             return None
 
@@ -1040,7 +1040,7 @@ class Variable(object):
         '''
         region = _general_region(kwargs)
         if region:
-            self.slicing(self._create_slice_(region))
+            self.slicing(self._create_slice(region))
             self.addHistory('setRegion('+str(region)+')')
         return self
 

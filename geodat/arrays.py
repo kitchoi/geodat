@@ -8,71 +8,52 @@ def getSlice(axis, lower, upper, modulo=None):
     where lower<=array<=upper.
 
     The function also takes an optional argument "modulo"
-    For example, x = numpy.arange(12)
-    getSlice(x,4,9,modulo=6) returns slice(5,
     '''
     if modulo is not None:
         axis, lower, upper = (numpy.mod(a, modulo)
                               for a in [axis, lower, upper])
 
-    # if the axis goes in increasing or decreasing direction?
-    if modulo is not None:
-        if len(axis) == 1:
-            axis_inc = axis_dec = True
-        else:
-            axis_inc = numpy.diff(axis)[0] > 0
-            axis_dec = numpy.diff(axis)[0] < 0
+    if (axis > upper).all() or (axis < lower).all():
+        raise ValueError("Not found for range: ({}, {}). modulo:{}".format(
+            lower, upper, modulo))
+
+    if numpy.isclose(lower, upper) and ~(axis == upper).any():
+        raise ValueError("Not found for range: ({}, {}). modulo:{}".format(
+            lower, upper, modulo))
+    
+    gt_eq_lower = axis >= lower
+    lt_eq_upper = axis <= upper
+
+    # Ordinary logical_and
+    matched = gt_eq_lower & lt_eq_upper
+    if matched.all():
+        return slice(None)
+
+    # Perhaps the axis is wrapped around
+    if not matched.any():
+        matched = gt_eq_lower ^ lt_eq_upper
+    
+    if not matched.any():
+        raise ValueError("Not found for range: ({}, {}). modulo:{}".format(
+            lower, upper, modulo))
+
+    # Find the beginning and ending of the chunk that matches the range
+    indices = numpy.where(numpy.diff(~matched))[0]
+    if len(indices) == 1:
+        i1, i2 = indices+1, len(axis)-1
+    elif len(indices) == 2:
+        i1, i2 = indices+1
+    elif len(indices) > 2:
+        raise RuntimeError("Too many chunks along the axis that fall within "+\
+                           "the given range")
     else:
-        axis_inc = all([d > 0 for d in numpy.diff(axis)])  #  increasing
-        axis_dec = all([d < 0 for d in numpy.diff(axis)])  #  decreasing
+        raise NotImplementedError
 
-
-    if not axis_inc and not axis_dec:
-        print axis
-        raise Exception('''The axis is neither monotonically
-        increasing or decreasing.''')
-
-    # There is a need to determine whether the slice spans separated region
-    # along a circular axis. e.g. the longitude axis runs from 0 to 360. but
-    # the user wants to extract -10. to 10., crossing the 0.
-    # e.g. lon = (-180.,180.), user wants (-200.,-170.)
-    # Here find the location on the axis closest to lower/upper, taking in
-    # account that lower<=axis<=upper
-    # Use mask array
-    axis_ma = numpy.ma.array(axis)
-    a_lower = axis_ma-lower
-    a_lower[a_lower < -1.e-8] = numpy.ma.masked
-    a_upper = upper - axis_ma
-    a_upper[a_upper < -1.e-8] = numpy.ma.masked
-    i1 = numpy.ma.argmin(a_lower)
-    i2 = numpy.ma.argmin(a_upper)
-
-    # Is it a circular axis and the boundary is crossed? a numpy array will
-    # be returned for indexing
-    crossedbnd = modulo is not None and ((axis_inc and i1 > i2) or \
-                                         (axis_dec and i2 > i1))
-
-    if crossedbnd and axis_inc:
-        return numpy.array(range(i1, len(axis))+range(0, i2+1))
-    elif crossedbnd and axis_dec:
-        return numpy.array(range(0, i1+1)+range(i2, len(axis)))
-    elif not crossedbnd and axis_inc:
-        if i2 >= i1:
-            return slice(i1, i2+1, None)
-        if i2 < i1:
-            raise Exception('''lower and upper bounds are swapped.
-            help({}.getSlice)'''.format(__name__))
-    elif not crossedbnd and axis_dec:
-        if i2 > i1:
-            raise Exception('''lower and upper bounds are swapped.
-            help({}.getSlice)'''.format(__name__))
-        if i2 <= i1:
-            return slice(i2, i1+1, None)
+    # Determine if the chunks are at the ends of the axis
+    if all(matched[:i1]) and all(matched[i2:]):
+        return numpy.array(range(i2, len(axis))+range(0, i1+1))
     else:
-        print 'axis,lower,upper:', axis, lower, upper
-        print 'i1,i2:', i1, i2
-        print 'crossedbnd:', crossedbnd
-        raise Exception("Error in getSlice")
+        return slice(i1, i2, None)
 
 
 def find_1d(arr, criterion, nresult=1, result_func=lambda i, x: (i, x),
