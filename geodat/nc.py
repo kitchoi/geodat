@@ -1187,18 +1187,22 @@ class Variable(object):
 
     @property
     def lat(self):
+        ''' Latitude axis (if exists) of the variable ''' 
         return self.getLatitude()
 
     @property
     def lon(self):
+        ''' Longitude axis (if exists) of the variable '''
         return self.getLongitude()
 
     @property
     def time(self):
+        ''' Time axis (if exists) of the variable '''
         return self.getTime()
 
     @property
     def depth(self):
+        ''' Vertical axis (if exists) of the variable '''
         return self.getAxis("Z")
     
     def apply_mask(self, mask):
