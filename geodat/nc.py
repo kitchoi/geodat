@@ -236,7 +236,7 @@ class Dimension(object):
         # Make sure the dimension data is a numpy array
         if numpy.isscalar(self.data):
             self.data = numpy.array([self.data,],
-                                    dtype=getattr(self.data,"dtype",None))
+                                    dtype=getattr(self.data, "dtype", None))
         if attributes is not None:
             self.attributes.update(attributes)
         self.attributes.update(dict(units=str(self.units)))
@@ -249,6 +249,8 @@ class Dimension(object):
                          units=self.units,
                          attributes=self.attributes)
 
+    def __getattr__(self, name):
+        return self.attributes.get(name)
 
     def info(self, detailed=False, file_out=None):
         """ Print brief info about the dimension
@@ -296,18 +298,6 @@ class Dimension(object):
             if self.units is not None:
                 cax = units.assign_caxis(self.units)
         return cax
-
-
-    def setattr(self, att, value):
-        ''' Java style setter for attributes
-        '''
-        self.attributes[att] = value
-
-
-    def getattr(self, att, default=None):
-        ''' Java style getter for attributes
-        '''
-        return self.attributes.get(att, default)
 
 
     def is_monotonic(self):
@@ -456,8 +446,8 @@ class Dimension(object):
         # Case 1: Return everything toggled
         #-------------------------------------
         if toggle != "m":
-            return numpy.array([[ getattr(t, flag2attr[flag])
-                                  for flag in toggle ]
+            return numpy.array([[getattr(t, flag2attr[flag])
+                                 for flag in toggle ]
                                 for t in alltimes ]).squeeze()
 
         # toggle == "m" - Extract months only
@@ -736,19 +726,12 @@ class Variable(object):
         """
         return [dim.dimname for dim in self.dims]
 
-    def setattr(self, att, value):
-        '''Set the value of an attribute of the variable
 
-        Java style setter
-        '''
-        self.attributes[att] = value
-
-    def getattr(self, att, default=None):
+    def __getattr__(self, att):
         ''' Return the value of an attribute of the variable
-
-        Java style getter
         '''
-        return self.attributes.get(att, default)
+        return self.attributes.get(att)
+
 
     def getAxes(self):
         ''' Return the dimensions of the variable as a list of numpy arrays
@@ -1254,8 +1237,8 @@ class Variable(object):
         If both are undefined, the numpy default for the variable
         data type is returned
         '''
-        FillValue = self.getattr('_FillValue', None)
-        missing_value = self.getattr('missing_value', None)
+        FillValue = getattr(self, '_FillValue', None)
+        missing_value = getattr(self, 'missing_value', None)
         default = numpy.asscalar(numpy.ma.default_fill_value(self.data))
         return missing_value or FillValue or default
 
@@ -1279,7 +1262,7 @@ class Variable(object):
             raise AssertionError("Missing value: {}".format(missing_value))
 
         self.data.set_fill_value(missing_value)
-        self.setattr('_FillValue', missing_value)
+        self.attributes['_FillValue'] = missing_value
         self.masked = True
         return None
 
@@ -1693,14 +1676,14 @@ def climatology(var, appendname=False,
     clim_data = monthly.climatology(data=data, months=months, axis=axis,
                                            *args, **kwargs)
     history = 'climatology'
-    long_name = var.getattr('long_name', '')
+    long_name = getattr(var, 'long_name', '')
     if appendname:
         long_name += " climatology"
     dims = [dim for dim in var.dims]
     # units is forced to be "days since 0001-01-01 00:00:00" instead of
     # inheriting the var's time unit
     dims[axis] = create_climatology_dimension(
-        calendar=var.dims[axis].getattr('calendar', 'standard').lower(),
+        calendar=getattr(var.dims[axis], 'calendar', 'standard').lower(),
         units='days since 0001-01-01 00:00:00',
         parent=var.dims[axis])
     return Variable(data=clim_data, dims=dims, parent=var,
@@ -1722,7 +1705,7 @@ def anomaly(var, appendname=False, clim=None,
         anom_data = monthly.anomaly(data=data, months=months,
                                            axis=axis, clim=clim.data)[0]
     history = 'anomaly'
-    long_name = var.getattr('long_name', '')
+    long_name = getattr(var, 'long_name', '')
     if appendname:
         long_name += " anomaly"
     dims = [dim for dim in var.dims]
@@ -1806,7 +1789,7 @@ def concatenate(variables, axis=0):
 
     return Variable(data=data, dims=dims, varname=variables[0].varname,
                     parent=variables[0],
-                    history=variables[0].getattr('history'))
+                    history=getattr(variables[0],'history'))
 
 
 def ensemble(variables, new_axis=None, new_axis_unit=None, **kwargs):
