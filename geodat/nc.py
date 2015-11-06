@@ -568,12 +568,12 @@ class Variable(object):
         attributes (dict): Attributes of the variable
 
     Arguments:
-        reader  (netcdf.netcdf_file, optional): if given, the variable is read
+        reader  (netcdf.netcdf_file): if given, the variable is read
           from the NetCDF file
         varname (str) : variable name
-        data    (numpy.ndarray or numpy.ma.core.MaskedArray)
-        dims    (a list of Dimension) : dimensions
-        attributes (dict): attributes of the variables
+        data    (numpy.ndarray): variable data
+        dims    (a list of Dimension objects) : dimensions
+        attributes (dict): attributes of the variable
         history (str): to be stored/appended to attributes['history']
         parent (Variable): from which varname, dims and attributes are copied;
           Copied `varname` and `dims` can be overwritten by assigning values in
@@ -603,7 +603,6 @@ class Variable(object):
 
         """
         # Initialize the most basic properties.
-        # Anything else goes to the attribute dictionary
         self.data = data
         self.dims = dims   # a list of Dimension instances
         self.varname = varname
@@ -629,7 +628,7 @@ class Variable(object):
             self._copy_from_parent_(parent)
         else:
             # no recognizable reader or parent variable is given;
-            #data, varname should not be None
+            # data, varname should not be None
             if data is None:
                 raise AttributeError('data is not provided')
             if varname is None:
