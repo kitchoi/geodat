@@ -9,18 +9,13 @@ addons:
     - libblas-dev
     - gfortran
     - libgeos-dev
-    - libnetcdf-dev
-    - libhdf5-serial-dev
     - libglib2.0-dev
 
 install:
-  - #sudo apt-get install libhdf5-serial-dev
+  - sudo apt-get install libnetcdf-dev
+  - sudo apt-get install libhdf5-serial-dev
   - sudo ln -s /usr/lib/libgeos-3.2.2.so /usr/lib/libgeos.so
   - sudo ln -s /usr/lib/libgeos-3.3.8.so /usr/lib/libgeos.so.1
-  - sudo ln -s /usr/lib/libnetcdf.so /usr/lib/libnetcdf.a
-  - sudo ln -s /usr/lib/libnetcdff.so /usr/lib/libnetcdff.a
-  - sudo ln -s /usr/lib/libhdf5.so /usr/lib/libhdf5.a
-  - sudo ln -s /usr/lib/libhdf5_hl.so /usr/lib/libhdf5_hl.a
   - wget "https://bootstrap.pypa.io/ez_setup.py" -O- | python
   - pip install numpy
   - ./install-pyferret.sh
