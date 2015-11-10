@@ -3,10 +3,7 @@
 from setuptools import setup
 
 with open("requirements.txt") as f:
-    requires = f.readlines()
-
-requires = [ req.replace("\n","") for req in requires ]
-requires = [ req for req in requires if req ]
+    requires = "".join(f.readlines())
 
 setup(name='Geodat',
       version='1.0',

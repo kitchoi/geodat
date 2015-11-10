@@ -1,8 +1,8 @@
-matplotlib
-numpy
-six
-scipy
 python-dateutil
-basemap
 pyspharm
 netCDF4
+basemap
+matplotlib
+scipy
+six
+numpy
