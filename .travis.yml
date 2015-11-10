@@ -10,9 +10,12 @@ addons:
     - gfortran
     - libgeos-dev
     - libglib2.0-dev
-    - libnetcdf-dev
     - netcdf-bin
     - libhdf5-serial-dev
+
+before_install:
+  - wget http://security.ubuntu.com/ubuntu/pool/universe/n/netcdf/libnetcdf-dev_4.1.1-6_amd64.deb
+  - sudo dpkg -i libnetcdf-dev_4.1.1-6_amd64.deb
 
 install:
   - sudo ln -s /usr/lib/libgeos-3.2.2.so /usr/lib/libgeos.so
