@@ -20,7 +20,10 @@ before_install:
 install:
   - sudo ln -s -f /usr/lib/libnetcdf.so /usr/lib/libnetcdf.a
   - sudo ln -s -f /usr/lib/libnetcdff.so /usr/lib/libnetcdff.a
+  - sudo ln -s -f /usr/lib/libhdf5.so /usr/lib/libhdf5.a
+  - sudo ln -s -f /usr/lib/libhdf5_hl.so /usr/lib/libhdf5_hl.a
   - ls -lah /usr/*/libnetcdf*
+  - ls -lah /usr/*/libhdf5*
   - sudo ln -s /usr/lib/libgeos-3.2.2.so /usr/lib/libgeos.so
   - sudo ln -s /usr/lib/libgeos-3.3.8.so /usr/lib/libgeos.so.1
   - wget "https://bootstrap.pypa.io/ez_setup.py" -O- | python
