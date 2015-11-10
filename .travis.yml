@@ -11,7 +11,7 @@ addons:
     - libgeos-dev
     - libglib2.0-dev
     - libnetcdf-dev
-    - libnetcdf-bin
+    - netcdf-bin
     - libhdf5-serial-dev
 
 install:
