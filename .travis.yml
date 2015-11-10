@@ -28,6 +28,7 @@ install:
   - sudo ln -s /usr/lib/libgeos-3.3.8.so /usr/lib/libgeos.so.1
   - wget "https://bootstrap.pypa.io/ez_setup.py" -O- | python
   - pip install numpy
+  - ./install-esmp.sh
   - ./install-pyferret.sh
   - export PYTHONPATH=$PYTHONPATH:$HOME/pyferret/ib/python2.7/site-packages:$HOME/esmp.ESMF_6_3_0rp1_ESMP_01
   - yes | python setup.py install
