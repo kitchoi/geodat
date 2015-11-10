@@ -18,6 +18,7 @@ before_install:
   - sudo dpkg -i libnetcdf-dev_4.1.1-6_amd64.deb
 
 install:
+  - ls -lah /usr/*/libnetcdf.*
   - sudo ln -s /usr/lib/libgeos-3.2.2.so /usr/lib/libgeos.so
   - sudo ln -s /usr/lib/libgeos-3.3.8.so /usr/lib/libgeos.so.1
   - wget "https://bootstrap.pypa.io/ez_setup.py" -O- | python
