@@ -12,11 +12,10 @@ addons:
     - libnetcdf-dev
     - libhdf5-serial-dev
     - libglib2.0-dev
-    - libglib2.0-0
-    - libglib2.0-cil-dev
 
 install:
   - #sudo apt-get install libhdf5-serial-dev
+  - locate glibconfig.h
   - ls /usr/lib64/glib-2.0/include
   - ls /usr/lib/glib-2.0/include
   - sudo ln -s /usr/lib/libgeos-3.2.2.so /usr/lib/libgeos.so
