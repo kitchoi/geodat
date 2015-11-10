@@ -13,7 +13,13 @@ You may also download the source directly as a `zip file <https://github.com/kit
 Installation
 ==================
 
-After downloading the source, simply do
+If you do not have the Python package setuptools already installed, run this:
+
+.. code-block:: sh
+
+   wget "https://bootstrap.pypa.io/ez_setup.py" -O- | python
+
+Then simply do
 
 .. code-block:: sh
 
