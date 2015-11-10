@@ -10,13 +10,11 @@ addons:
     - gfortran
     - libgeos-dev
     - libglib2.0-dev
+    - libnetcdf-dev
+    - libnetcdf-bin
+    - libhdf5-serial-dev
 
 install:
-  - sudo apt-get install libnetcdf-dev
-  - sudo apt-get install libhdf5-serial-dev
-  - ls /usr/*/libnetcdf.a
-  - echo $HOSTTYPE
-  - uname -a
   - sudo ln -s /usr/lib/libgeos-3.2.2.so /usr/lib/libgeos.so
   - sudo ln -s /usr/lib/libgeos-3.3.8.so /usr/lib/libgeos.so.1
   - wget "https://bootstrap.pypa.io/ez_setup.py" -O- | python
