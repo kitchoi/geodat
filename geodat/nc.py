@@ -1400,6 +1400,7 @@ def nc_cal(func):
                         history=history)
     return newfun
 
+
 def wgt_ave(var, axis=None, lat_weighted=True):
     '''A more general routine for averaging
 
@@ -1435,6 +1436,7 @@ def wgt_ave(var, axis=None, lat_weighted=True):
     cartesian_axes = var.getCAxes()
     if axis is None:
         axis = range(len(cartesian_axes))
+
     # If the input axis is a single integer, convert it into a list
     if type(axis) is int:
         axis = [axis]
@@ -1468,6 +1470,7 @@ def wgt_ave(var, axis=None, lat_weighted=True):
                       for iax in range(var.data.ndim)])
     weights *= lat_weights
     weights = numpy.ma.masked_where(data.mask, weights)
+
     data = keepdims.mean(data*weights, axis=axis)/\
            keepdims.mean(weights, axis=axis)
     dims = [Dimension(numpy.array([1,], dtype='i4'),
@@ -2052,15 +2055,15 @@ def var2fer(var, name=None):
     if not pyferret_func.PYFERRET_INSTALLED:
         raise ImportError("No pyferret installed")
 
-    num_input = _var_to_num_input(var)
+    num_input = _var2num(var)
     if name is not None:
-        assert isinstance(name,str)
+        assert isinstance(name, str)
         num_input["varname"] = name
 
-    return pyferret_func.num2fer(num_input)
+    return pyferret_func.num2fer(**num_input)
 
 
-def _var_to_num_input(var):
+def _var2num(var):
     ''' Convert a geodat.nc.Variable instance to a dictionary ready to be used
     by pyferret_func.num2fer
 
@@ -2073,9 +2076,32 @@ def _var_to_num_input(var):
     return dict(data=var.data, missing_value=var.getMissingValue(),
                 coords=var.getAxes(),
                 dimunits=[dim.units for dim in var.dims],
-                varname=var.varname, data_units=var.getattr('units', ''),
+                varname=var.varname, data_units=getattr(var, 'units', ""),
                 cartesian_axes=var.getCAxes(),
                 dimnames=var.getDimnames())
+
+def _num2var(num):
+    ''' Convert pyferret_func.fer2num output to a geodat.nc.Variable instance
+
+    Arg:
+        num (dict)
+
+    Returns:
+        geodat.nc.Variable
+    '''
+    var_attrs = dict(missing_value=num.get("missing_value",
+                                           numpy.asscalar(
+                                               numpy.ma.default_fill_value(
+                                                   num["data"]))))
+    if "data_units" in num:
+        var_attrs["units"] = num["data_units"]
+
+    dims = [Dimension(data=dimdata, dimname=dimname, units=dimunit)
+            for dimdata, dimname, dimunit in zip(num["coords"], num["dimnames"],
+                                                 num["dimunits"])]
+
+    return Variable(data=num["data"], varname=num.get("varname", "UNKNOWN"),
+                    dims=dims, attributes=var_attrs)
 
 
 def pyferret_regrid(var, ref_var=None, axis='XY', nlon=None, nlat=None,
@@ -2142,10 +2168,10 @@ def pyferret_regrid(var, ref_var=None, axis='XY', nlon=None, nlat=None,
     ref_var_slice = tuple([slice(0, 1) if cax not in axis.upper()
                            else slice(None)
                            for cax in ref_var.getCAxes()])
-    return pyferret_func.regrid_primitive(
-        _var_to_num_input(var),
-        _var_to_num_input(ref_var[ref_var_slice].squeeze()),
-        axis, verbose=verbose, prerun=prerun, transform=transform)
+    return _num2var(pyferret_func.regrid_primitive(
+        _var2num(var),
+        _var2num(ref_var[ref_var_slice].squeeze()),
+        axis, verbose=verbose, prerun=prerun, transform=transform))
 
 
 def regrid(var, nlon, nlat, verbose=False):

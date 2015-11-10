@@ -212,14 +212,16 @@ def regrid_once_primitive(var, ref_var, axis,
     #    raise Exception("Currently axis can only be X/Y/XY")
 
     # Construct the source data read by pyferret.putdata
-    source_fer = num2fer(varname="source", **var)
+    source_fer = num2fer(**var)
+    source_fer["name"] = "source"
 
     # Fill in unnecessary input for Ferret
     if "data" not in ref_var:
         ref_var['data'] = numpy.zeros((1,)*len(ref_var['coords']))
 
     # Construct the destination data read by pyferret.putdata
-    dest_fer = num2fer(varname="dest", **ref_var)
+    dest_fer = num2fer(**ref_var)
+    dest_fer["name"] = "dest"
 
     if verbose:
         print source_fer

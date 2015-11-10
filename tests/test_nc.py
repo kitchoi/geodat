@@ -55,11 +55,10 @@ def expect_import_error_unless_module_exists(module_name):
     '''
     def new_test_func(test_func):
         def new_func(testcase, *args, **kwargs):
-            print(module_name, "cannot be imported and an ImportError",
-                  "is expected to be raised by the code.  The module name ",
-                  "should be included in the error message")
             with testcase.assertRaisesRegexp(ImportError, module_name):
                 test_func(testcase, *args, **kwargs)
+            testcase.skipTest(module_name+" cannot be imported. "+\
+                              "ImportError raised")
         return new_func
 
     try:
@@ -500,12 +499,12 @@ class NCVariableTestCase(unittest.TestCase):
 
     @expect_import_error_unless_module_exists("pyferret")
     def test_conform_regrid(self):
-        regional = self.var.getRegion(lat=(-40.,40.),lon=(100.,200.))
+        regional = self.var.getRegion(lat=(-40.,40.), lon=(100.,200.))
         conformed, regional = geodat.nc.conform_regrid(self.var, regional)
         self.assertTrue(numpy.allclose(conformed.getLatitude(),
                                        regional.getLatitude()) and \
                         numpy.allclose(conformed.getLongitude(),
-                                       regioinal.getLongitude()))
+                                       regional.getLongitude()))
 
 
     def test_is_monotonic(self):
@@ -554,13 +553,20 @@ class NCVariableTestCase(unittest.TestCase):
     @expect_import_error_unless_module_exists("spharm")
     def test_regrid_spharm(self):
         regridded = geodat.nc.regrid(self.var,nlat=100,nlon=120)
-        self.assertAlmostEqual(float(regridded.wgt_ave().data), self.var_mean, 1)
+        self.assertAlmostEqual(float(regridded.wgt_ave().data),
+                               float(self.var.wgt_ave().data), 1)
 
 
     @expect_import_error_unless_module_exists("pyferret")
     def test_regrid_pyferret(self):
-        regridded = geodat.nc.pyferret_regrid(self.var[...,::2,::2], self.var)
-        self.assertAlmostEqual(float(regridded.wgt_ave().data), self.var_mean, 1)
+        regridded = geodat.nc.pyferret_regrid(self.var, nlat=100, nlon=120)
+        actual = float(regridded.wgt_ave().data)
+        expected = float(self.var.wgt_ave().data)
+        self.assertAlmostEqual(actual, expected, 1)
+
+        # Regrid back
+        regridded = geodat.nc.pyferret_regrid(regridded, self.var)
+        self.assertAlmostEqual(actual, expected, 1)
 
 
     def test_wgt_sum(self):
@@ -625,7 +631,7 @@ class NCVariableTestCase(unittest.TestCase):
 
 class NCFileIOTestCase(unittest.TestCase):
     TEST_DATA_NAME = "tests/data/test_nc_data.nc"
-    TEST_DATA_SOURCE = "http://kychoi.org/geodat_test_data/sst_parts.nc"
+    TEST_DATA_SOURCE = "http://kychoi.org/geodat/test_data/sst_parts.nc"
 
     @property
     def does_test_data_exist(self):
