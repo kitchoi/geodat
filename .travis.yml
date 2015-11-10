@@ -19,7 +19,7 @@ before_install:
 
 install:
   - sudo ln -s -f /usr/lib/libnetcdf.so /usr/lib/libnetcdf.a
-  - sudo ln -s -f /usr/lib/libnetcdf.so /usr/lib/libnetcdf.a
+  - sudo ln -s -f /usr/lib/libnetcdff.so /usr/lib/libnetcdff.a
   - ls -lah /usr/*/libnetcdf*
   - sudo ln -s /usr/lib/libgeos-3.2.2.so /usr/lib/libgeos.so
   - sudo ln -s /usr/lib/libgeos-3.3.8.so /usr/lib/libgeos.so.1
