@@ -171,7 +171,7 @@ def filter_monthly(time, unit, calendar):
             alltimes = numpy.array(alltimes) - datetime.timedelta(days=15)
     else:
         new_times = time_utils.roll(time, unit, calendar,
-                                    days=15*int(move_forward))
+                                    days=15*(1 if move_forward else -1))
 
         alltimes = time_utils.num2date(new_times, unit, calendar)
 

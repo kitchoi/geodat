@@ -281,17 +281,6 @@ class NCVariableTestCase(unittest.TestCase):
         self.assertNotEqual(newvar.data.shape, self.var.data.shape)
 
 
-    @misc.expect_import_error_unless_module_exists("netCDF4")
-    def test_getDate_special_calendar(self):
-        '''Test if getDate functions properly with special calendars
-        handled by netcdftime'''
-        months_iter = itertools.cycle(range(1,13))
-        months = numpy.array([ months_iter.next()
-                               for _ in range(self.var.data.shape[0])])
-        self.assertTrue(numpy.allclose(self.var.getDate("m", True),
-                                       months))
-
-
     def test_getDate(self):
         '''Test if getDate functions properly using standard calendar'''
         time_dim1 = geodat.nc.Dimension(
@@ -392,8 +381,8 @@ class NCVariableTestCase(unittest.TestCase):
 
     @misc.expect_import_error_unless_module_exists("netCDF4")
     def test_timeslices(self):
-        nNDJF = sum(numpy.logical_or(self.var.getDate("m",True) >= 11,
-                                     self.var.getDate("m",True) <= 2))
+        nNDJF = sum(numpy.logical_or(self.var.dims[0].getMonthly() >= 11,
+                                     self.var.dims[0].getMonthly() <= 2))
         self.assertEqual(geodat.nc.TimeSlices(self.var[:, :2, :3],
                                               11., 2., "m", True).data.shape[0],
                          nNDJF)
