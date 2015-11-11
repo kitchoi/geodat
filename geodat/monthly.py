@@ -1,7 +1,14 @@
+import datetime
+import logging
+
 import numpy
 import matplotlib.dates
 
 from . import keepdims
+from . import time_utils
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 def get_sliceobj(data, months, month, axis):
     ''' Get the slice that would extract the data in a particular month
@@ -85,3 +92,97 @@ def clim2long(clim, axis, months):
     assert clim.shape[axis] == 12
     sliceobj = (slice(None),)*axis + (months,)
     return clim[sliceobj]
+
+
+def is_monthly(time, unit, calendar):
+    """ Return a boolean whether the time axis is a monthly axis
+    Criterion: as long as all the time steps are larger than 0.5 month and less
+               than 1.5 months
+
+    Args:
+        time (numpy 1d array)
+        unit (str): e.g. "days since 0001-01-01"
+        calendar (str): e.g. "julian"
+
+    Returns: bool
+    """
+    t0 = time_utils.extract_t0_from_unit(unit)
+
+    def round_off_month(month, day):
+        """ Round off to the closest month """
+        # 15 days to 1 month, 1 month 14 days to 1 month, etc.
+        return month + numpy.clip(numpy.ceil(day/15), 0, 1)
+
+    dmonths = (round_off_month(d.month-t0.month, d.day-t0.day)
+               for d in time_utils.num2date(numpy.diff(time), unit, calendar))
+
+    return all(( int(dmonth) == 1 for dmonth in dmonths ))
+
+
+def filter_monthly(time, unit, calendar):
+    ''' Given a monthly time axis, check if there are adjacent calendar months
+    that are identical because the days are close to the ends of calendar months.
+    If so, correct for the duplicate by making reasonable guess about how The
+    monthly data is distributed.
+
+    For example, 31-01-0001 and 01-03-0001 would be interpreted as being in JAN
+    and FEB.
+
+    Args:
+        time (numpy 1d array)
+        unit (str): e.g. "days since 0001-01-01"
+        calendar (str): e.g. "julian"
+
+    Returns:
+        months (numpy 1d array, dtype=numpy.int)
+    '''
+    if not is_monthly(time, unit, calendar):
+        raise ValueError("Input time axis is not a monthly axis")
+
+    alltimes = time_utils.num2date(time, unit, calendar)
+    all_months = numpy.array([ t.month for t in alltimes ])
+
+    # Difference between months
+    month_diff = numpy.diff(all_months)
+
+    # Filtering is not required
+    if ((month_diff == 1) | (month_diff == -11)).all():
+        return all_months
+
+    """
+    If most of the time stamps are close to the end of a calendar
+    month, the problem can be fixed by rolling the time axis
+    backward or forward by half a month
+    """
+    all_days = numpy.array([t.day for t in alltimes])
+    if not (sum(numpy.logical_or(
+            all_days > 25, all_days < 5)) > len(all_days)/2):
+        raise RuntimeError("There are duplicated months and "+\
+                           "no_continuous_duplicate_month is True. "+\
+                           "But the calendar days provide no hint "+\
+                           "for correction.")
+
+    move_forward = sum(all_days > 25) < sum(all_days < 5)
+    if isinstance(alltimes[0], datetime.date):
+        # timedelta can be added directly
+        if move_forward:
+            alltimes = numpy.array(alltimes) + datetime.timedelta(days=15)
+        else:
+            alltimes = numpy.array(alltimes) - datetime.timedelta(days=15)
+    else:
+        new_times = time_utils.roll(time, unit, calendar,
+                                    days=15*int(move_forward))
+
+        alltimes = time_utils.num2date(new_times, unit, calendar)
+
+    all_months = numpy.array([t.month for t in alltimes])
+
+    if (numpy.diff(all_months) != 0).all():
+        logger.info("Months are computed by shifting the time "+\
+                    "axis {}".format("forward" if move_forward
+                                     else "backward"))
+        return all_months
+    else:
+        raise RuntimeError("Failed to correct for duplicated months by "+\
+                           "shifting the time axis. "+\
+                           "You may consider regridding.")
