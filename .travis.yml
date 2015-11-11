@@ -30,7 +30,7 @@ install:
   - pip install numpy
   - ./install-esmp.sh
   - ./install-pyferret.sh
-  - export PYTHONPATH=$PYTHONPATH:$HOME/pyferret/ib/python2.7/site-packages:$HOME/esmp.ESMF_6_3_0rp1_ESMP_01
+  - export PYTHONPATH=$PYTHONPATH:$HOME/pyferret-1.1.0-source/pyferret_install/lib/python2.7/site-packages:$HOME/esmp.ESMF_6_3_0rp1_ESMP_01
   - yes | python setup.py install
   - pip install coveralls
 
