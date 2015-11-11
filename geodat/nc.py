@@ -33,6 +33,7 @@ from .plot import mapplot
 from . import grid_func
 from . import pyferret_func
 from . import units
+from . import time_utils
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -306,8 +307,10 @@ class Dimension(object):
     def is_monotonic(self):
         ''' Return True if the axis is monotonic, False otherwise
         '''
-        strict_monotonic_func = lambda data: (numpy.diff(data) > 0.).all() or \
-                                (numpy.diff(data) < 0.).all()
+        def strict_monotonic_func(data):
+            return (numpy.diff(data) > 0.).all() or \
+                (numpy.diff(data) < 0.).all()
+
         strict_monotonic = strict_monotonic_func(self.data)
         if not strict_monotonic and self.getCAxis() == 'X':
             # Make sure it is not because of periodic boundary condition
@@ -350,18 +353,7 @@ class Dimension(object):
         '''
         if self.getCAxis() != 'T':
             raise Exception("This axis is not a time axis")
-        startpoint = self.units.split(' since ')[-1]
-        # choose the appropriate time format since some data
-        # does not specify the hour/minute/seconds
-        if len(startpoint.split()) > 1:
-            if len(startpoint.split()[-1].split(':')) == 3:
-                date_format = '%Y-%m-%d %H:%M:%S'
-            else:
-                startpoint = startpoint.split()[0]
-                date_format = '%Y-%m-%d'
-        else:
-            date_format = '%Y-%m-%d'
-        return datetime.datetime.strptime(startpoint, date_format)
+        return time_utils.extract_t0_from_unit(self.units)
 
 
     def getDate(self, toggle="YmdHMS", no_continuous_duplicate_month=False):
@@ -407,35 +399,14 @@ class Dimension(object):
         if not all((t in "YmdHMS" for t in toggle)):
             raise ValueError("toggle has to be one of \"Y/m/d/H/M/S\"")
 
-        #--------------------------------------------------------
-        # Convert time values to datetime objects using netCDF4
-        #--------------------------------------------------------
+        #----------------------------------------
+        # Convert time values to datetime objects
+        #----------------------------------------
         units = self.units.split()[0]
         units = units if units.endswith("s") else units+"s"
 
-        if units != 'months':
-            alltimes = _num2date(self.data, self.units,
-                                 self.attributes.get(
-                                     'calendar', 'standard').lower())
-            try:
-                _ = iter(alltimes)
-            except TypeError:
-                alltimes = [alltimes, ]
-        else:
-            # netcdftime does not handle month as the unit
-            if 'since' not in self.units:
-                raise Exception("the dimension, assumed to be a time"+\
-                                " axis, should have a unit such as "+\
-                                "\"days since 01-JAN-2000\"")
-            if not self.is_monotonic():
-                raise ValueError("The axis is not monotonic!")
-            if (numpy.diff(self.data) < 0.).all():
-                raise ValueError("Time going backward...really?")
-
-            t0 = self.time0() # is a datetime.datetime object
-            # at this point we knew the unit is month
-            alltimes = [t0 + relativedelta(months=int(t))
-                        for t in self.data]
+        alltimes = time_utils.num2date(self.data, self.units,
+                                       getattr(self, "calendar", "standard"))
 
         # Convert flag to attribute names
         flag2attr = dict(Y="year",  m="month", d="day", H="hour",
