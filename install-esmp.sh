@@ -1,3 +1,12 @@
+if [ -d "$HOME/esmp.ESMF_6_3_0rp1_ESMP_01" ]; then
+    if [[ $* != *--update* ]]; then
+	echo "Cached ESMP exists.  Passed.";
+	exit 0;
+    fi
+fi
+
+echo "Download and install ESMF/ESMP started"
+
 cd $HOME
 wget http://kychoi.org/geodat/esmp.ESMF_6_3_0rp1_ESMP_01.tar.gz
 gunzip esmp.ESMF_6_3_0rp1_ESMP_01.tar.gz
@@ -8,8 +17,6 @@ export ESMF_INSTALL_PREFIX=$HOME/esmf
 make -s
 make install -s
 
-ls $HOME/esmf/lib/lib0/*/esmf.mk
-
 cd ../ESMP
-export ESMFMKFILE=$HOME/esmf/lib/libO/Linux.gfortran.64.mpiuni.default/esmf.mk
+export ESMFMKFILE=$HOME/esmp.ESMF_6_3_0rp1_ESMP_01/esmf/lib/libO/Linux.gfortran.64.mpiuni.default/esmf.mk
 make build -s

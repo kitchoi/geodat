@@ -35,8 +35,11 @@ install:
   - pip install coveralls
 
 cache:
-  - bundler
   - apt
+  directories:
+  - $HOME/.cache/pip
+  - $HOME/pyferret-1.1.0-source/pyferret_install
+  - $HOME/esmp.ESMF_6_3_0rp1_ESMP_01
 
 script:
   - coverage run --source=geodat setup.py test
