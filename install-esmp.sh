@@ -5,11 +5,11 @@ tar -xf esmp.ESMF_6_3_0rp1_ESMP_01.tar
 cd esmp.ESMF_6_3_0rp1_ESMP_01/esmf
 export ESMF_DIR=$PWD
 export ESMF_INSTALL_PREFIX=$HOME/esmf
-make
-make install
+make -s
+make install -s
 
 ls $HOME/esmf/lib/lib0/*/esmf.mk
 
 cd ../ESMP
 export ESMFMKFILE=$HOME/esmf/lib/libO/Linux.gfortran.64.mpiuni.default/esmf.mk
-make build
+make build -s
