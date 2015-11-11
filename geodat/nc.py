@@ -250,7 +250,10 @@ class Dimension(object):
                          attributes=self.attributes)
 
     def __getattr__(self, name):
-        return self.attributes.get(name)
+        if name in self.attributes:
+            return self.attributes[name]
+        else:
+            raise AttributeError("{} is not found".format(name))
 
     def info(self, detailed=False, file_out=None):
         """ Print brief info about the dimension
@@ -730,8 +733,10 @@ class Variable(object):
     def __getattr__(self, att):
         ''' Return the value of an attribute of the variable
         '''
-        return self.attributes.get(att)
-
+        if att in self.attributes:
+            return self.attributes[att]
+        else:
+            raise AttributeError("{} is not found".format(att))
 
     def getAxes(self):
         ''' Return the dimensions of the variable as a list of numpy arrays
@@ -1792,7 +1797,7 @@ def concatenate(variables, axis=0):
 
     return Variable(data=data, dims=dims, varname=variables[0].varname,
                     parent=variables[0],
-                    history=getattr(variables[0],'history'))
+                    history=getattr(variables[0], 'history', None))
 
 
 def ensemble(variables, new_axis=None, new_axis_unit=None, **kwargs):
