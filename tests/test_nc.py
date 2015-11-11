@@ -11,6 +11,7 @@ import urllib
 
 import geodat.nc
 
+from . import misc
 
 def var_dummy(ntime, nlat, nlon):
     ''' Create a geodat.nc.Variable instance of shape (ntime, nlat, nlon)
@@ -40,32 +41,6 @@ def var_dummy(ntime, nlat, nlon):
                               reshape(ntime, nlat, nlon),
                               dims=[time_dim, lat_dim, lon_dim],
                               varname="temp")
-
-
-def expect_import_error_unless_module_exists(module_name):
-    ''' Runtime dependencies will lead to ImportError
-    The library is supposed to check that and notify the
-    user that a dependency is required for a function
-
-    Args:
-       module_name (str): Name of the required module
-
-    Returns:
-       decorator that accepts a single callable argument
-    '''
-    def new_test_func(test_func):
-        def new_func(testcase, *args, **kwargs):
-            with testcase.assertRaisesRegexp(ImportError, module_name):
-                test_func(testcase, *args, **kwargs)
-            testcase.skipTest(module_name+" cannot be imported. "+\
-                              "ImportError raised")
-        return new_func
-
-    try:
-        importlib.import_module(module_name)
-    except ImportError:
-        return new_test_func
-    return lambda test_func: test_func
 
 
 class DummyVariable(object):
@@ -306,7 +281,7 @@ class NCVariableTestCase(unittest.TestCase):
         self.assertNotEqual(newvar.data.shape, self.var.data.shape)
 
 
-    @expect_import_error_unless_module_exists("netCDF4")
+    @misc.expect_import_error_unless_module_exists("netCDF4")
     def test_getDate_special_calendar(self):
         '''Test if getDate functions properly with special calendars
         handled by netcdftime'''
@@ -324,11 +299,6 @@ class NCVariableTestCase(unittest.TestCase):
             units="month since 0001-01-01",
             dimname="time",
             attributes={"calendar":"standard"})
-        time_dim2 = geodat.nc.Dimension(
-            data=numpy.arange(0., 24.),
-            units="month since 0001-01-01 00:00:00",
-            dimname="time",
-            attributes={"calendar":"standard"})
 
         month_iter = itertools.cycle(range(1,13))
         dates = numpy.array([[imon/12+1, month_iter.next()]
@@ -336,37 +306,10 @@ class NCVariableTestCase(unittest.TestCase):
 
         # Should work on different format of monthly unit
         self.assertTrue(numpy.allclose(time_dim1.getDate("Ym"), dates))
-        self.assertTrue(numpy.allclose(time_dim2.getDate("Ym"), dates))
-
-        # Correct months by rolling forward
-        g = geodat.nc.create_monthly("standard",
-                                     "days since 0001-01-01","0001-01-01")
-        time_dim3 = geodat.nc.Dimension(data=numpy.array([g.next()
-                                                          for _ in range(24)]),
-                                        dimname="time",
-                                        units="days since 0001-01-01")
-        month_iter = itertools.cycle(range(1,13))
-        dates =  numpy.array([month_iter.next()
-                              for imon in range(time_dim1.data.size)])
-        self.assertTrue(numpy.allclose(time_dim3.getDate("m", True), dates))
-
-
-        # Correct months by rolling backward
-        time_dim3 = geodat.nc.Dimension(data=numpy.arange(30.,730.,30.),
-                                        dimname="time",
-                                        units="days since 0001-01-01")
-        month_iter = itertools.cycle(range(1,13))
-        dates =  numpy.array([month_iter.next()
-                              for imon in range(time_dim1.data.size)])
-        self.assertTrue(numpy.allclose(time_dim3.getDate("m", True), dates))
 
         # Throw an error when the dimension is not a time axis
         with self.assertRaisesRegexp(RuntimeError, "not a time axis"):
             self.var.dims[1].getDate()
-
-        # Throw an error when asking for year but require non-duplicating months
-        with self.assertRaisesRegexp(RuntimeError, "applies when toggle=m"):
-            time_dim1.getDate("Y", True)
 
         # Throw an error when toggle is not one of Y/m/d/H/M/S
         with self.assertRaisesRegexp(ValueError, "toggle has to be one of"):
@@ -375,18 +318,6 @@ class NCVariableTestCase(unittest.TestCase):
         # Throw an error when toggle is not iterable
         with self.assertRaisesRegexp(TypeError, "toggle has to be iterable"):
             time_dim1.getDate(0)
-
-        # Not actually a monthly data
-        time_dim2 = geodat.nc.Dimension(
-            data=numpy.arange(1, 380, 15),
-            units="days since 0001-01-01 00:00:00",
-            dimname="time",
-            attributes={"calendar":"standard"})
-        # This should just get a warning and run okay
-        time_dim2.getDate("m")
-        # This will throw an error
-        with self.assertRaisesRegexp(RuntimeError, "not seem to be a monthly"):
-            time_dim2.getDate("m", True)
 
         # Throw an error if the unit format is wrong
         time_dim1.units = "month"
@@ -459,7 +390,7 @@ class NCVariableTestCase(unittest.TestCase):
                                        self.var.data))
 
 
-    @expect_import_error_unless_module_exists("netCDF4")
+    @misc.expect_import_error_unless_module_exists("netCDF4")
     def test_timeslices(self):
         nNDJF = sum(numpy.logical_or(self.var.getDate("m",True) >= 11,
                                      self.var.getDate("m",True) <= 2))
@@ -468,13 +399,13 @@ class NCVariableTestCase(unittest.TestCase):
                          nNDJF)
 
 
-    @expect_import_error_unless_module_exists("netCDF4")
+    @misc.expect_import_error_unless_module_exists("netCDF4")
     def test_climatology(self):
         clim = geodat.nc.climatology(self.var)
         self.assertTrue(clim.dims[clim.getCAxes().index("T")].is_climo())
 
 
-    @expect_import_error_unless_module_exists("netCDF4")
+    @misc.expect_import_error_unless_module_exists("netCDF4")
     def test_anomaly(self):
         clim = geodat.nc.climatology(self.var)
         anom = geodat.nc.anomaly(self.var, clim=clim)
@@ -497,7 +428,7 @@ class NCVariableTestCase(unittest.TestCase):
         self.assertTupleEqual(conform_region["lon"], regional_domain["X"])
 
 
-    @expect_import_error_unless_module_exists("pyferret")
+    @misc.expect_import_error_unless_module_exists("pyferret")
     def test_conform_regrid(self):
         regional = self.var.getRegion(lat=(-40.,40.), lon=(100.,200.))
         conformed, regional = geodat.nc.conform_regrid(self.var, regional)
@@ -516,7 +447,7 @@ class NCVariableTestCase(unittest.TestCase):
         self.assertTrue(newvar.getDim("X").is_monotonic())
 
 
-    @expect_import_error_unless_module_exists("netCDF4")
+    @misc.expect_import_error_unless_module_exists("netCDF4")
     def test_savefile(self):
         geodat.nc.savefile(self.TMP_FILE_NAME, self.var)
         geodat.nc.savefile(self.TMP_FILE_NAME, self.var, overwrite=True)
@@ -550,14 +481,14 @@ class NCVariableTestCase(unittest.TestCase):
         if os.path.exists(self.TMP_FILE_NAME):
             os.remove(self.TMP_FILE_NAME)
 
-    @expect_import_error_unless_module_exists("spharm")
+    @misc.expect_import_error_unless_module_exists("spharm")
     def test_regrid_spharm(self):
         regridded = geodat.nc.regrid(self.var,nlat=100,nlon=120)
         self.assertAlmostEqual(float(regridded.wgt_ave().data),
                                float(self.var.wgt_ave().data), 1)
 
 
-    @expect_import_error_unless_module_exists("pyferret")
+    @misc.expect_import_error_unless_module_exists("pyferret")
     def test_regrid_pyferret(self):
         regridded = geodat.nc.pyferret_regrid(self.var, nlat=100, nlon=120)
         actual = float(regridded.wgt_ave().data)
