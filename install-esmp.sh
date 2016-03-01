@@ -5,10 +5,9 @@ if [ -d "$HOME/esmp.ESMF_6_3_0rp1_ESMP_01" ]; then
     fi
 fi
 
-echo "Download and install ESMF/ESMP started"
+echo "Install ESMF/ESMP"
 
 cd $HOME
-wget http://kychoi.org/geodat/esmp.ESMF_6_3_0rp1_ESMP_01.tar.gz
 gunzip esmp.ESMF_6_3_0rp1_ESMP_01.tar.gz
 tar -xf esmp.ESMF_6_3_0rp1_ESMP_01.tar
 cd esmp.ESMF_6_3_0rp1_ESMP_01/esmf
